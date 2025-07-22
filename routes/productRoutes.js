@@ -37,6 +37,11 @@ router.put(
   updateProductController
 );
 
+
+
+
+
+
 //get products
 router.get("/get-product", getProductController);
 
@@ -49,6 +54,13 @@ router.get("/product-photo/:pid", productPhotoController);
 //delete rproduct
 router.delete("/delete-product/:pid", deleteProductController);
 
+
+
+
+
+
+
+
 //filter product
 router.post("/product-filters", productFiltersController);
 
@@ -58,6 +70,9 @@ router.get("/product-count", productCountController);
 //product per page
 router.get("/product-list/:page", productListController);
 
+
+
+
 //search product
 router.get("/search/:keyword", searchProductController);
 
@@ -66,6 +81,14 @@ router.get("/related-product/:pid/:cid", realtedProductController);
 
 //category wise product
 router.get("/product-category/:slug", productCategoryController);
+
+
+
+
+
+
+
+
 
 //payments routes
 //token

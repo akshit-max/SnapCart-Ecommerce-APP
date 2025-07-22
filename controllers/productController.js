@@ -10,12 +10,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 //payment gateway
-// var gateway = new braintree.BraintreeGateway({
-//   environment: braintree.Environment.Sandbox,
-//   merchantId: process.env.BRAINTREE_MERCHANT_ID,
-//   publicKey: process.env.BRAINTREE_PUBLIC_KEY,
-//   privateKey: process.env.BRAINTREE_PRIVATE_KEY,
-// });
+var gateway = new braintree.BraintreeGateway({
+  environment: braintree.Environment.Sandbox,
+  merchantId: process.env.BRAINTREE_MERCHANT_ID,
+  publicKey: process.env.BRAINTREE_PUBLIC_KEY,
+  privateKey: process.env.BRAINTREE_PRIVATE_KEY,
+});
+
+import formidable from "formidable";
 
 export const createProductController = async (req, res) => {
   try {
@@ -34,7 +36,7 @@ export const createProductController = async (req, res) => {
         return res.status(500).send({ error: "Category is Required" });
       case !quantity:
         return res.status(500).send({ error: "Quantity is Required" });
-      case photo && photo.size > 1000000:
+      case photo && photo.size > 10 * 1024 * 1024:
         return res
           .status(500)
           .send({ error: "photo is Required and should be less then 1mb" });
@@ -85,6 +87,7 @@ export const getProductController = async (req, res) => {
     });
   }
 };
+
 // get single product
 export const getSingleProductController = async (req, res) => {
   try {
@@ -192,6 +195,15 @@ export const updateProductController = async (req, res) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
 // filters
 export const productFiltersController = async (req, res) => {
   try {
@@ -256,6 +268,10 @@ export const productListController = async (req, res) => {
     });
   }
 };
+
+
+
+
 
 // search product
 export const searchProductController = async (req, res) => {
@@ -326,6 +342,16 @@ export const productCategoryController = async (req, res) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
+
 //payment gateway api
 //token
 export const braintreeTokenController = async (req, res) => {
@@ -334,13 +360,14 @@ export const braintreeTokenController = async (req, res) => {
       if (err) {
         res.status(500).send(err);
       } else {
-        res.send(response);
+        res.send({ clientToken: response.clientToken }); // 👈 Fix: wrap in object
       }
     });
   } catch (error) {
     console.log(error);
   }
 };
+
 
 //payment
 export const brainTreePaymentController = async (req, res) => {

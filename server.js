@@ -10,12 +10,15 @@ import authRoutes from './routes/authRoute.js'
 import categoryRoutes from './routes/categoryRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import cors from 'cors'
+import contactRoutes from "./routes/contactRoutes.js";
 
 // config env
 dotenv.config()
 
 // database
 connectdb();
+
+// console.log("✅ Loaded BRAINTREE_MERCHANT_ID:", process.env.BRAINTREE_MERCHANT_ID);
 
 // rest object 
 const app= express()
@@ -29,6 +32,7 @@ app.use(morgan('dev'))
 app.use("/api/v1/auth",authRoutes)
 app.use("/api/v1/category",categoryRoutes)
 app.use("/api/v1/product",productRoutes)
+app.use("/api/contact", contactRoutes);
 
 //rest api
 app.get('/',(req,res)=>{

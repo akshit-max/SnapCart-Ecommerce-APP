@@ -32,6 +32,9 @@ export const createCategoryController = async (req, res) => {
   }
 };
 
+
+
+
 //update category
 export const updateCategoryController = async (req, res) => {
   try {
@@ -57,6 +60,11 @@ export const updateCategoryController = async (req, res) => {
   }
 };
 
+
+
+
+
+
 // get all cat
 export const categoryControlller = async (req, res) => {
   try {
@@ -75,6 +83,10 @@ export const categoryControlller = async (req, res) => {
     });
   }
 };
+
+
+
+
 
 // single category
 export const singleCategoryController = async (req, res) => {
@@ -95,6 +107,11 @@ export const singleCategoryController = async (req, res) => {
     });
   }
 };
+
+
+
+
+
 
 //delete category
 export const deleteCategoryCOntroller = async (req, res) => {
