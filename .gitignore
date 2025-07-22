@@ -21,7 +21,7 @@ logs/
 
 # Optional: if using build tools like Babel or TypeScript
 dist/
-build/
+
 
 # Optional: PM2 logs or other tools
 pids/
