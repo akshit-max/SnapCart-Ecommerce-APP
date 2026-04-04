@@ -27,9 +27,14 @@ router.post("/forgot-password", forgotPasswordController);
 
 
 // //test routes
-router.get("/test", requireSignIn, isAdmin, testController);
-// router.get("/test", requireSignIn,  testController);
+// router.get("/test", requireSignIn, isAdmin, testController);
+router.get("/test", requireSignIn,  testController); 
 // router.get("/test",  testController);
+
+
+
+
+
 
 //protected User route auth
 router.get("/user-auth", requireSignIn, (req, res) => {

@@ -1,15 +1,19 @@
 // const express= require('express')
 // const colors= require('colors')
+import dns from "node:dns";
+
+// force DNS servers
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 import express from "express";
 import colors from "colors";
 import dotenv from 'dotenv'
 import morgan from "morgan";
+import cors from 'cors'
 import connectdb from "./config/db.js";
 import authRoutes from './routes/authRoute.js'
 import categoryRoutes from './routes/categoryRoutes.js'
 import productRoutes from './routes/productRoutes.js'
-import cors from 'cors'
 import contactRoutes from "./routes/contactRoutes.js";
 
 // config env
@@ -48,4 +52,5 @@ const PORT= process.env.PORT || 8080;
 
 app.listen(PORT,()=>{
     console.log(`server running on ${process.env.DEV_MODE} mode on port ${PORT}`.bgBlue.white);
+    // console.log("MONGO URL:", process.env.MONGO_URL);
 }) 
