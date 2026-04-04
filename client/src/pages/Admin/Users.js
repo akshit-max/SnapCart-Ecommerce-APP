@@ -1,9 +1,28 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AdminMenu from "../../components/Layout/AdminMenu";
-import Layout from "./../../components/Layout/Layout";
+import Layout from "../../components/Layout/Layout";
 import { FaUsers } from "react-icons/fa";
+import axios from "axios";
 
 const Users = () => {
+  const [users, setUsers] = useState([]);
+
+  // GET USERS
+  const getUsers = async () => {
+    try {
+      const { data } = await axios.get("/api/v1/auth/all-users");
+      if (data?.success) {
+        setUsers(data.users);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    getUsers();
+  }, []);
+
   return (
     <Layout title={"Dashboard - All Users"}>
       <style>{`
@@ -37,11 +56,25 @@ const Users = () => {
           color: #1e293b;
         }
 
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        th, td {
+          padding: 10px;
+          border-bottom: 1px solid #e2e8f0;
+          text-align: left;
+        }
+
+        th {
+          background: #f8fafc;
+        }
+
         .empty-state {
           text-align: center;
           padding: 40px 0;
           color: #64748b;
-          font-size: 14px;
         }
       `}</style>
 
@@ -61,8 +94,31 @@ const Users = () => {
                 <div className="users-title">All Users</div>
               </div>
 
-              {/* CONTENT (placeholder for now) */}
-              <div className="empty-state">No users to display yet.</div>
+              {/* USERS TABLE */}
+              {users.length === 0 ? (
+                <div className="empty-state">No users found</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u, i) => (
+                      <tr key={u._id}>
+                        <td>{i + 1}</td>
+                        <td>{u.name}</td>
+                        <td>{u.email}</td>
+                        <td>{u.role === 1 ? "Admin" : "User"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>

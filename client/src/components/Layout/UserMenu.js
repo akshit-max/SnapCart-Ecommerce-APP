@@ -36,9 +36,10 @@ const UserMenu = () => {
             background: isActive ? "#eff6ff" : "transparent",
             color: isActive ? "#2563eb" : "#374151",
             transition: "0.2s",
+            
           })}
         >
-          👤 Profile
+          Profile
         </NavLink>
 
         {/* Orders */}
@@ -54,7 +55,7 @@ const UserMenu = () => {
             transition: "0.2s",
           })}
         >
-          📦 Orders
+           Orders
         </NavLink>
 
       </div>

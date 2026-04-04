@@ -3,6 +3,26 @@ import { comparePassword, hashPassword } from "./../helpers/authHelper.js";
 import JWT from "jsonwebtoken";
 import orderModel from "../models/orderModel.js";
 
+
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await userModel.find({}).select("-password");
+
+    res.status(200).send({
+      success: true,
+      users,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error while fetching users",
+      error,
+    });
+  }
+};
+
 export const registerController = async (req, res) => {
   try {
     const { name, email, password, phone, address ,answer} = req.body;

@@ -146,7 +146,7 @@ const AdminOrders = () => {
                               : "#991b1b",
                           }}
                         >
-                          {o?.payment?.success ? "Success" : "Failed"}
+                           {o?.payment.success ? "Failed" : "Success"}
                         </span>
                       </td>
 

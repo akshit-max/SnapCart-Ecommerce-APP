@@ -12,8 +12,18 @@ import {
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
 import { createOrderController } from "../controllers/authController.js";
 
+import {
+  getAllUsers,
+} from "../controllers/authController.js";
+
+
+
 //router object
 const router = express.Router();
+
+
+// GET ALL USERS (ADMIN)
+router.get("/all-users", requireSignIn, isAdmin, getAllUsers);
 
 //routing
 //REGISTER || METHOD POST

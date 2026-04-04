@@ -150,7 +150,7 @@ const Orders = () => {
                       <td>{moment(o?.createAt).fromNow()}</td>
 
                       <td>
-                        {o?.payment.success ? "Success" : "Failed"}
+                        {o?.payment.success ? "Failed" : "Success"}
                       </td>
 
                       <td>{o?.products?.length}</td>
