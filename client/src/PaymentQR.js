@@ -42,7 +42,7 @@ const PaymentQR = () => {
   className="btn btn-primary"
   onClick={async () => {
     try {
-      await axios.post("http://localhost:8080/api/v1/auth/order", {
+      await axios.post("/api/v1/auth/order", {
         cart,
         payment: {
           method: "UPI",

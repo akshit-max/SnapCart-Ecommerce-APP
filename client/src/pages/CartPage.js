@@ -211,7 +211,7 @@ const CartPage = () => {
                         onClick={async () => {
                           try {
                             await axios.post(
-                              "http://localhost:8080/api/v1/auth/order",
+                              "/api/v1/auth/order",
                               {
                                 cart,
                                 payment: { method: "UPI", status: "Success" },
