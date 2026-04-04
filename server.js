@@ -36,17 +36,20 @@ app.use("/api/v1/category", categoryRoutes);
 app.use("/api/v1/product", productRoutes);
 app.use("/api/contact", contactRoutes);
 
+
+
 // __dirname fix for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // serve frontend (IMPORTANT for Render)
+// serve frontend (SAFE + production ready)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "./client/build")));
 
-  app.get("/*", (req, res) => {
-  res.sendFile(path.join(__dirname, "./client/build/index.html"));
-});
+  app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "./client/build/index.html"));
+  });
 } else {
   app.get("/", (req, res) => {
     res.send("<h1>API is running...</h1>");
