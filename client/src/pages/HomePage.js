@@ -1,349 +1,3 @@
-
-
-// import React, { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-// import { Checkbox, Radio } from "antd";
-// import { Prices } from "../components/Prices";
-// import { useCart } from "../context/cart";
-// import axios from "axios";
-// import toast from "react-hot-toast";
-// import Layout from "./../components/Layout/Layout";
-// import { AiOutlineReload } from "react-icons/ai";
-
-// const HomePage = () => {
-//   const navigate = useNavigate();
-//   const [cart, setCart] = useCart();
-//   const [products, setProducts] = useState([]);
-//   const [categories, setCategories] = useState([]);
-//   const [checked, setChecked] = useState([]);
-//   const [radio, setRadio] = useState([]);
-//   const [total, setTotal] = useState(0);
-//   const [page, setPage] = useState(1);
-//   const [loading, setLoading] = useState(false);
-
-//   const getAllCategory = async () => {
-//     const { data } = await axios.get("/api/v1/category/get-category");
-//     if (data?.success) setCategories(data.category);
-//   };
-
-//   const getTotal = async () => {
-//     const { data } = await axios.get("/api/v1/product/product-count");
-//     setTotal(data.total);
-//   };
-
-//   useEffect(() => {
-//     getAllCategory();
-//     getTotal();
-//   }, []);
-
-//   const getAllProducts = async () => {
-//     setLoading(true);
-//     const { data } = await axios.get(`/api/v1/product/product-list/${page}`);
-//     setProducts(data.products);
-//     setLoading(false);
-//   };
-
-//   const filterProduct = async () => {
-//     const { data } = await axios.post("/api/v1/product/product-filters", {
-//       checked,
-//       radio,
-//     });
-//     setProducts(data.products);
-//   };
-
-//   useEffect(() => {
-//     if (!checked.length || !radio.length) getAllProducts();
-//   }, [checked.length, radio.length]);
-
-//   useEffect(() => {
-//     if (checked.length || radio.length) filterProduct();
-//   }, [checked, radio]);
-
-//   const loadMore = async () => {
-//     setLoading(true);
-//     const { data } = await axios.get(`/api/v1/product/product-list/${page}`);
-//     setProducts([...products, ...data.products]);
-//     setLoading(false);
-//   };
-
-//   useEffect(() => {
-//     if (page === 1) return;
-//     loadMore();
-//   }, [page]);
-
-//   const handleFilter = (value, id) => {
-//     let all = [...checked];
-//     value ? all.push(id) : (all = all.filter((c) => c !== id));
-//     setChecked(all);
-//   };
-
-//   return (
-//     <Layout title="All Products">
-//       {/* STYLE */}
-//       <style>{`
-//         .card:hover img {
-//           transform: scale(1.05);
-//         }
-//         .card:hover {
-//           box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-//         }
-//       `}</style>
-
-//       <div className="container mt-4">
-//         {/* Banner */}
-//         <div className="mb-4 rounded-4 overflow-hidden shadow-sm">
-//           <img
-//             src="ba.jpeg"
-//             alt="banner"
-//             style={{
-//               width: "100%",
-//               height: "300px",
-//               objectFit: "cover",
-//               objectPosition: "center",
-//             }}
-//           />
-//         </div>
-
-//         <div className="row">
-//           {/* Filters */}
-//          {/* Filters */}
-// <div className="col-md-3 mb-4">
-//   <div
-//     style={{
-//       background: "#ffffff",
-//       borderRadius: "14px",
-//       padding: "20px",
-//       boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
-//       border: "1px solid #f1f5f9",
-//     }}
-//   >
-//     {/* Title */}
-//     <h5
-//       style={{
-//         fontWeight: "600",
-//         marginBottom: "18px",
-//         color: "#1e293b",
-//       }}
-//     >
-//       Filters
-//     </h5>
-
-//     {/* CATEGORY */}
-//     <div className="mb-4">
-//       <p
-//         style={{
-//           fontSize: "12px",
-//           fontWeight: "600",
-//           color: "#64748b",
-//           letterSpacing: "0.5px",
-//           marginBottom: "10px",
-//         }}
-//       >
-//         CATEGORY
-//       </p>
-
-//       <div className="d-flex flex-column gap-2">
-//         {categories?.map((c) => (
-//           <label
-//             key={c._id}
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: "8px",
-//               padding: "6px 8px",
-//               borderRadius: "6px",
-//               cursor: "pointer",
-//               transition: "0.2s",
-//             }}
-//             className="filter-item"
-//           >
-//             <Checkbox
-//               onChange={(e) =>
-//                 handleFilter(e.target.checked, c._id)
-//               }
-//             />
-//             <span style={{ fontSize: "14px", color: "#334155" }}>
-//               {c.name}
-//             </span>
-//           </label>
-//         ))}
-//       </div>
-//     </div>
-
-//     {/* PRICE */}
-//     <div className="mb-4">
-//       <p
-//         style={{
-//           fontSize: "12px",
-//           fontWeight: "600",
-//           color: "#64748b",
-//           letterSpacing: "0.5px",
-//           marginBottom: "10px",
-//         }}
-//       >
-//         PRICE
-//       </p>
-
-//       <Radio.Group
-//         onChange={(e) => setRadio(e.target.value)}
-//         className="d-flex flex-column gap-2"
-//       >
-//         {Prices?.map((p) => (
-//           <label
-//             key={p._id}
-//             className="filter-item"
-//             style={{
-//               display: "flex",
-//               alignItems: "center",
-//               gap: "8px",
-//               padding: "6px 8px",
-//               borderRadius: "6px",
-//               cursor: "pointer",
-//               transition: "0.2s",
-//             }}
-//           >
-//             <Radio value={p.array} />
-//             <span style={{ fontSize: "14px", color: "#334155" }}>
-//               {p.name}
-//             </span>
-//           </label>
-//         ))}
-//       </Radio.Group>
-//     </div>
-
-//     {/* RESET */}
-//     <button
-//       style={{
-//         width: "100%",
-//         padding: "10px",
-//         borderRadius: "8px",
-//         background: "#1e293b",
-//         color: "#fff",
-//         fontWeight: "500",
-//         border: "none",
-//         transition: "0.2s",
-//       }}
-//       onClick={() => window.location.reload()}
-//       className="filter-reset"
-//     >
-//       Reset Filters
-//     </button>
-//   </div>
-
-//   {/* Styles */}
-//   <style>
-//     {`
-//       .filter-item:hover {
-//         background: #f8fafc;
-//       }
-
-//       .filter-reset:hover {
-//         background: #334155;
-//       }
-//     `}
-//   </style>
-// </div>
-
-//           {/* Products */}
-//           <div className="col-md-9">
-//             <h4 className="fw-semibold mb-4">All Products</h4>
-
-//             <div className="row g-4">
-//               {products?.map((p) => (
-//                 <div className="col-sm-6 col-md-4" key={p._id}>
-//                   <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-//                     {/* IMAGE FIX */}
-//                     {/* <div className="ratio ratio-4x3 overflow-hidden"> */}
-//                     <div
-//                       style={{
-//                         height: "350px",
-//                         backgroundColor: "#f8f9fa",
-//                         display: "flex",
-//                         alignItems: "center",
-//                         justifyContent: "center",
-//                         overflow: "hidden",
-//                       }}
-//                     >
-//                       <img
-//                         src={`/api/v1/product/product-photo/${p._id}`}
-//                         alt={p.name}
-//                         style={{
-//                           width: "100%",
-//                           height: "100%",
-//                           objectFit: "cover",
-//                           objectPosition: "top",
-//                         }}
-//                       />
-//                     </div>
-//                     {/* </div> */}
-
-//                     {/* BODY */}
-//                     <div className="card-body d-flex flex-column">
-//                       <div className="d-flex justify-content-between mb-2">
-//                         <h6 className="fw-semibold text-dark mb-0">{p.name}</h6>
-//                         <span className="text-primary fw-bold">${p.price}</span>
-//                       </div>
-
-//                       <p className="text-muted small mb-3">
-//                         {p.description.substring(0, 60)}...
-//                       </p>
-
-//                       <div className="d-flex gap-2 mt-auto">
-//                         <button
-//                           className="btn btn-outline-dark btn-sm w-50 rounded-2"
-//                           onClick={() => navigate(`/product/${p.slug}`)}
-//                         >
-//                           Details
-//                         </button>
-
-//                         <button
-//                           className="btn btn-dark btn-sm w-50 rounded-2"
-//                           onClick={() => {
-//                             setCart([...cart, p]);
-//                             localStorage.setItem(
-//                               "cart",
-//                               JSON.stringify([...cart, p]),
-//                             );
-//                             toast.success("Added to cart");
-//                           }}
-//                         >
-//                           Add
-//                         </button>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-
-//             {/* Load More */}
-//             <div className="text-center mt-4">
-//               {products && products.length < total && (
-//                 <button
-//                   className="btn btn-dark px-4"
-//                   onClick={() => setPage(page + 1)}
-//                 >
-//                   {loading ? (
-//                     "Loading..."
-//                   ) : (
-//                     <>
-//                       Load More <AiOutlineReload />
-//                     </>
-//                   )}
-//                 </button>
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </Layout>
-//   );
-// };
-
-// export default HomePage;
-
-
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Checkbox, Radio } from "antd";
@@ -423,7 +77,6 @@ const HomePage = () => {
 
   return (
     <Layout title="All Products">
-
       {/* GLOBAL STYLE */}
       <style>{`
         .card:hover img {
@@ -442,7 +95,6 @@ const HomePage = () => {
       `}</style>
 
       <div className="container-fluid px-4 mt-4">
-
         {/* Banner */}
         <div className="mb-4 rounded-4 overflow-hidden shadow-sm ">
           <img
@@ -459,7 +111,6 @@ const HomePage = () => {
         </div>
 
         <div className="row">
-
           {/* FILTERS */}
           <div className="col-md-3 mb-4">
             <div className="filters-sticky">
@@ -480,9 +131,7 @@ const HomePage = () => {
                   {categories?.map((c) => (
                     <label key={c._id} className="filter-item p-1 rounded">
                       <Checkbox
-                        onChange={(e) =>
-                          handleFilter(e.target.checked, c._id)
-                        }
+                        onChange={(e) => handleFilter(e.target.checked, c._id)}
                       >
                         {c.name}
                       </Checkbox>
@@ -516,12 +165,9 @@ const HomePage = () => {
 
           {/* PRODUCTS */}
           <div className="col-md-9">
-
             {/* TOP BAR */}
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-semibold">
-                All Products ({products.length})
-              </h5>
+              <h5 className="fw-semibold">All Products ({products.length})</h5>
 
               <select className="form-select w-auto">
                 <option>Sort by</option>
@@ -536,7 +182,6 @@ const HomePage = () => {
               {products?.map((p) => (
                 <div className="col-sm-6 col-md-4" key={p._id}>
                   <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-
                     {/* IMAGE */}
                     <div
                       style={{
@@ -560,9 +205,7 @@ const HomePage = () => {
                     <div className="card-body d-flex flex-column">
                       <div className="d-flex justify-content-between mb-2">
                         <h6 className="fw-semibold mb-0">{p.name}</h6>
-                        <span className="text-primary fw-bold">
-                          ${p.price}
-                        </span>
+                        <span className="text-primary fw-bold">${p.price}</span>
                       </div>
 
                       <p className="text-muted small mb-3">
@@ -572,9 +215,7 @@ const HomePage = () => {
                       <div className="d-flex gap-2 mt-auto">
                         <button
                           className="btn btn-outline-dark btn-sm w-50"
-                          onClick={() =>
-                            navigate(`/product/${p.slug}`)
-                          }
+                          onClick={() => navigate(`/product/${p.slug}`)}
                         >
                           Details
                         </button>
@@ -585,7 +226,7 @@ const HomePage = () => {
                             setCart([...cart, p]);
                             localStorage.setItem(
                               "cart",
-                              JSON.stringify([...cart, p])
+                              JSON.stringify([...cart, p]),
                             );
                             toast.success("Added to cart");
                           }}
@@ -616,7 +257,6 @@ const HomePage = () => {
                 </button>
               )}
             </div>
-
           </div>
         </div>
       </div>

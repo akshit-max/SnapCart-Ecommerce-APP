@@ -1,199 +1,3 @@
-// import React, { useState } from "react";
-// import { useNavigate } from "react-router-dom";
-// import axios from "axios";
-// import toast from "react-hot-toast";
-// import Layout from "../../components/Layout/Layout";
-// import { useAuth } from "../../context/auth";
-// import { FaUserCircle } from "react-icons/fa";
-
-// const Login = () => {
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [auth, setAuth] = useAuth();
-//   const navigate = useNavigate();
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     try {
-//       const { data } = await axios.post("http://localhost:8080/api/v1/auth/login", {
-//         email,
-//         password,
-//       });
-
-//       if (data?.success) {
-//         toast.success("Login Successful");
-//         setAuth({
-//           ...auth,
-//           user: data.user,
-//           token: data.token,
-//         });
-//         localStorage.setItem("auth", JSON.stringify(data));
-//         navigate("/");
-//       } else {
-//         toast.error(data?.message || "Login failed");
-//       }
-//     } catch (error) {
-//       console.error("Login error:", error);
-//       toast.error("Something went wrong. Try again.");
-//     }
-//   };
-
-//   return (
-//     <Layout title="Login | ShopVerse">
-//       <div className="container d-flex align-items-center justify-content-center" style={{ minHeight: "90vh" }}>
-//         <div className="col-md-6 col-lg-5 shadow p-5 rounded bg-white text-center">
-//           <FaUserCircle size={70} className="text-primary mb-3" />
-//           <h3 className="mb-4">Welcome Back 👋</h3>
-
-//           <form onSubmit={handleSubmit}>
-//             <div className="form-group mb-3 text-start">
-//               <label htmlFor="email" className="form-label">Email</label>
-//               <input
-//                 type="email"
-//                 id="email"
-//                 value={email}
-//                 onChange={(e) => setEmail(e.target.value)}
-//                 className="form-control"
-//                 placeholder="Enter your email"
-//                 required
-//               />
-//             </div>
-
-//             <div className="form-group mb-3 text-start">
-//               <label htmlFor="password" className="form-label">Password</label>
-//               <input
-//                 type="password"
-//                 id="password"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//                 className="form-control"
-//                 placeholder="Enter your password"
-//                 required
-//               />
-//             </div>
-
-//             <div className="d-flex justify-content-end mb-3">
-//               <button
-//                 type="button"
-//                 className="btn btn-link p-0 text-danger"
-//                 onClick={() => navigate("/forgot-password")}
-//               >
-//                 Forgot Password?
-//               </button>
-//             </div>
-
-//             <button type="submit" className="btn btn-primary w-100">
-//               Login
-//             </button>
-//           </form>
-//         </div>
-//       </div>
-//     </Layout>
-//   );
-// };
-
-// export default Login;
-
-
-
-// import React, { useState } from "react";
-// import { useNavigate } from "react-router-dom";
-// import axios from "axios";
-// import toast from "react-hot-toast";
-// import Layout from "../../components/Layout/Layout";
-// import { useAuth } from "../../context/auth";
-// import { FaUserCircle } from "react-icons/fa";
-
-// const Login = () => {
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [auth, setAuth] = useAuth();
-//   const navigate = useNavigate();
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     try {
-//       const { data } = await axios.post("http://localhost:8080/api/v1/auth/login", {
-//         email,
-//         password,
-//       });
-
-//       if (data?.success) {
-//         toast.success("Login Successful");
-//         setAuth({
-//           ...auth,
-//           user: data.user,
-//           token: data.token,
-//         });
-//         localStorage.setItem("auth", JSON.stringify(data));
-//         navigate("/");
-//       } else {
-//         toast.error(data?.message || "Login failed");
-//       }
-//     } catch (error) {
-//       console.error("Login error:", error);
-//       toast.error("Something went wrong. Try again.");
-//     }
-//   };
-
-//   return (
-//     <Layout title="Login | ShopVerse">
-//       <div className="container d-flex align-items-center justify-content-center" style={{ minHeight: "90vh" }}>
-//         <div className="col-md-6 col-lg-5 shadow p-5 rounded bg-white text-center">
-//           <FaUserCircle size={70} className="text-primary mb-3" />
-//           <h3 className="mb-4">Welcome Back 👋</h3>
-
-//           <form onSubmit={handleSubmit}>
-//             <div className="form-group mb-3 text-start">
-//               <label htmlFor="email" className="form-label">Email</label>
-//               <input
-//                 type="email"
-//                 id="email"
-//                 value={email}
-//                 onChange={(e) => setEmail(e.target.value)}
-//                 className="form-control"
-//                 placeholder="Enter your email"
-//                 required
-//               />
-//             </div>
-
-//             <div className="form-group mb-3 text-start">
-//               <label htmlFor="password" className="form-label">Password</label>
-//               <input
-//                 type="password"
-//                 id="password"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//                 className="form-control"
-//                 placeholder="Enter your password"
-//                 required
-//               />
-//             </div>
-
-//             <div className="d-flex justify-content-end mb-3">
-//               <button
-//                 type="button"
-//                 className="btn btn-link p-0 text-danger"
-//                 onClick={() => navigate("/forgot-password")}
-//               >
-//                 Forgot Password?
-//               </button>
-//             </div>
-
-//             <button type="submit" className="btn btn-primary w-100">
-//               Login
-//             </button>
-//           </form>
-//         </div>
-//       </div>
-//     </Layout>
-//   );
-// };
-
-// export default Login;
-
-
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -211,10 +15,13 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await axios.post("http://localhost:8080/api/v1/auth/login", {
-        email,
-        password,
-      });
+      const { data } = await axios.post(
+        "http://localhost:8080/api/v1/auth/login",
+        {
+          email,
+          password,
+        },
+      );
 
       if (data?.success) {
         toast.success("Login Successful");
@@ -236,7 +43,6 @@ const Login = () => {
 
   return (
     <Layout title="Login | ShopVerse">
-
       {/* STYLE */}
       <style>{`
         .login-wrapper {
@@ -317,17 +123,15 @@ const Login = () => {
 
       <div className="login-wrapper">
         <div className="login-card">
-
           <FaUserCircle className="login-icon" />
 
-          <div className="login-title">
-            Welcome back
-          </div>
+          <div className="login-title">Welcome back</div>
 
           <form onSubmit={handleSubmit}>
-
             <div className="mb-3 text-start">
-              <label htmlFor="email" className="form-label">Email</label>
+              <label htmlFor="email" className="form-label">
+                Email
+              </label>
               <input
                 type="email"
                 id="email"
@@ -340,7 +144,9 @@ const Login = () => {
             </div>
 
             <div className="mb-2 text-start">
-              <label htmlFor="password" className="form-label">Password</label>
+              <label htmlFor="password" className="form-label">
+                Password
+              </label>
               <input
                 type="password"
                 id="password"
@@ -365,12 +171,9 @@ const Login = () => {
             <button type="submit" className="btn w-100 text-white login-btn">
               Login
             </button>
-
           </form>
-
         </div>
       </div>
-
     </Layout>
   );
 };

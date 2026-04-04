@@ -1,27 +1,3 @@
-// import React from "react";
-// import AdminMenu from "../../components/Layout/AdminMenu";
-// import Layout from "./../../components/Layout/Layout";
-
-// const Users = () => {
-//   return (
-//     <Layout title={"Dashboard - All Users"}>
-//       <div className="container-fluid m-3 p-3">
-//         <div className="row">
-//           <div className="col-md-3">
-//             <AdminMenu />
-//           </div>
-//           <div className="col-md-9">
-//             <h1>All Users</h1>
-//           </div>
-//         </div>
-//       </div>
-//     </Layout>
-//   );
-// };
-
-// export default Users;
-
-
 import React from "react";
 import AdminMenu from "../../components/Layout/AdminMenu";
 import Layout from "./../../components/Layout/Layout";
@@ -30,7 +6,6 @@ import { FaUsers } from "react-icons/fa";
 const Users = () => {
   return (
     <Layout title={"Dashboard - All Users"}>
-
       <style>{`
         .users-wrapper {
           padding: 30px;
@@ -72,7 +47,6 @@ const Users = () => {
 
       <div className="container-fluid users-wrapper">
         <div className="row">
-
           {/* SIDEBAR */}
           <div className="col-md-3">
             <AdminMenu />
@@ -80,29 +54,19 @@ const Users = () => {
 
           {/* MAIN */}
           <div className="col-md-9">
-
             <div className="users-card">
-
               {/* HEADER */}
               <div className="users-header">
                 <FaUsers className="users-icon" />
-                <div className="users-title">
-                  All Users
-                </div>
+                <div className="users-title">All Users</div>
               </div>
 
               {/* CONTENT (placeholder for now) */}
-              <div className="empty-state">
-                No users to display yet.
-              </div>
-
+              <div className="empty-state">No users to display yet.</div>
             </div>
-
           </div>
-
         </div>
       </div>
-
     </Layout>
   );
 };

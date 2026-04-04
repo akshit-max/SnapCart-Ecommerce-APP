@@ -1,18 +1,3 @@
-// import React from 'react'
-// import Layout from '../components/Layout/Layout'
-
-// const HomePage = () => {
-//   return (
-
-//         <Layout>
-//       <h1>Page not found!!</h1>
-//       </Layout>
-
-//   )
-// }
-
-// export default HomePage
-
 import React from "react";
 import Layout from "../components/Layout/Layout";
 import { Link } from "react-router-dom";
