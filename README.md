@@ -1,7 +1,7 @@
 # 🛒 SnapCart – Full Stack E-Commerce Application
 
 🌐 **Live Demo:** https://snapcart-ecommerce-app.onrender.com
-🎥 Demo Video: 
+🎥 **Demo Video:** 
 
 SnapCart is a **production-style full-stack MERN e-commerce application** that implements complete shopping workflows including authentication, product management, cart operations, and order processing.
 
