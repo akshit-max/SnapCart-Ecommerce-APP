@@ -7,7 +7,7 @@ import orderModel from "../models/orderModel.js";
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await userModel.find({}).select("-password");
+    const users = await userModel.find({}).select("-password")
 
     res.status(200).send({
       success: true,
