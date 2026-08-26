@@ -118,7 +118,7 @@ The application follows a modular MERN architecture:
 
 ---
 
-## 🚧 Future Improvements
+## 🚧 Future Improvement
 
 * 💳 Payment integration (Stripe/Razorpay)
 * 🔍 Advanced search & filters
