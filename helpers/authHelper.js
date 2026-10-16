@@ -1,17 +1,16 @@
 import bcrypt from "bcrypt";
 
-export const hashPassword = async (password) => {
-  try {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    return hashedPassword;
-  } catch (error) {
-    console.log(error);
-  }
-};
+export const hashPassword = (password) => bcrypt.hash(password, 10);
 
-export const comparePassword = async (password, hashedPassword) => {
-  return bcrypt.compare(password, hashedPassword);
-};
+export const comparePassword = (password, hashedPassword) =>
+  bcrypt.compare(password, hashedPassword);
 
-
+// user data that is safe to send to the client
+export const publicUser = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  address: user.address,
+  role: user.role,
+});

@@ -1,17 +1,18 @@
 import JWT from "jsonwebtoken";
-import userModel from "../models/UserModel.js";
+import userModel from "../models/userModel.js";
 
 //Protected Routes token base
-export const requireSignIn = async (req, res, next) => {
+export const requireSignIn = (req, res, next) => {
   try {
-    const decode = JWT.verify(
-      req.headers.authorization,
-      process.env.JWT_SECRET
-    );
-    req.user = decode;
+    // accept both "Bearer <token>" and the raw token
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) {
+      return res.status(401).send({ success: false, message: "Please login first" });
+    }
+    req.user = JWT.verify(token, process.env.JWT_SECRET);
     next();
   } catch (error) {
-    console.log(error);
+    return res.status(401).send({ success: false, message: "Session expired, please login again" });
   }
 };
 
@@ -19,20 +20,18 @@ export const requireSignIn = async (req, res, next) => {
 export const isAdmin = async (req, res, next) => {
   try {
     const user = await userModel.findById(req.user._id);
-    if (user.role !== 1) {
-      return res.status(401).send({
+    if (!user || user.role !== 1) {
+      return res.status(403).send({
         success: false,
-        message: "UnAuthorized Access",
+        message: "Admin access only",
       });
-    } else {
-      next();
     }
+    next();
   } catch (error) {
     console.log(error);
-    res.status(401).send({
+    res.status(500).send({
       success: false,
-      error,
-      message: "Error in admin middelware",
+      message: "Error in admin middleware",
     });
   }
 };

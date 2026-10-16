@@ -1,133 +1,92 @@
-import CategoryModel from "../models/CategoryModel.js";
+import categoryModel from "../models/categoryModel.js";
+import productModel from "../models/productModel.js";
 import slugify from "slugify";
+
+const toSlug = (name) => slugify(name, { lower: true, strict: true });
+
+//create category
 export const createCategoryController = async (req, res) => {
   try {
-    const { name } = req.body;
+    const name = req.body.name?.trim();
     if (!name) {
-      return res.status(401).send({ message: "Name is required" });
+      return res.status(400).send({ success: false, message: "Name is required" });
     }
-    const existingCategory = await CategoryModel.findOne({ name });
-    if (existingCategory) {
-      return res.status(200).send({
-        success: false,
-        message: "Category Already Exisits",
-      });
+    if (await categoryModel.exists({ slug: toSlug(name) })) {
+      return res.status(409).send({ success: false, message: "Category already exists" });
     }
-    const category = await new CategoryModel({
-      name,
-      slug: slugify(name), 
-    }).save(); 
-    res.status(201).send({
-      success: true,
-      message: "new category created",
-      category,
-    });
+
+    const category = await new categoryModel({ name, slug: toSlug(name) }).save();
+    res.status(201).send({ success: true, message: "New category created", category });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
-      success: false,
-      error,
-      message: "Errro in Category",
-    });
+    res.status(500).send({ success: false, message: "Error while creating category" });
   }
 };
-
-
-
 
 //update category
 export const updateCategoryController = async (req, res) => {
   try {
-    const { name } = req.body;
+    const name = req.body.name?.trim();
     const { id } = req.params;
-    const category = await CategoryModel.findByIdAndUpdate(
+    if (!name) {
+      return res.status(400).send({ success: false, message: "Name is required" });
+    }
+    if (await categoryModel.exists({ slug: toSlug(name), _id: { $ne: id } })) {
+      return res.status(409).send({ success: false, message: "Category already exists" });
+    }
+
+    const category = await categoryModel.findByIdAndUpdate(
       id,
-      { name, slug: slugify(name) },
+      { name, slug: toSlug(name) },
       { new: true }
     );
-    res.status(200).send({
-      success: true,
-      messsage: "Category Updated Successfully",
-      category,
-    });
+    res.status(200).send({ success: true, message: "Category updated successfully", category });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
-      success: false,
-      error,
-      message: "Error while updating category",
-    });
+    res.status(500).send({ success: false, message: "Error while updating category" });
   }
 };
 
-
-
-
-
-
-// get all cat
-export const categoryControlller = async (req, res) => {
+//get all categories
+export const categoryController = async (req, res) => {
   try {
-    const category = await CategoryModel.find({});
-    res.status(200).send({
-      success: true,
-      message: "All Categories List",
-      category,
-    });
+    const category = await categoryModel.find({}).sort({ name: 1 });
+    res.status(200).send({ success: true, category });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
-      success: false,
-      error,
-      message: "Error while getting all categories",
-    });
+    res.status(500).send({ success: false, message: "Error while getting categories" });
   }
 };
 
-
-
-
-
-// single category
+//single category
 export const singleCategoryController = async (req, res) => {
   try {
-    //It fetches a single category document from the database where the slug field matches the slug provided in the request URL.
-    const category = await CategoryModel.findOne({ slug: req.params.slug });
-    res.status(200).send({
-      success: true,
-      message: "Get SIngle Category SUccessfully",
-      category,
-    });
+    const category = await categoryModel.findOne({ slug: req.params.slug });
+    if (!category) return res.status(404).send({ success: false, message: "Category not found" });
+    res.status(200).send({ success: true, category });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
-      success: false,
-      error,
-      message: "Error While getting Single Category",
-    });
+    res.status(500).send({ success: false, message: "Error while getting category" });
   }
 };
 
-
-
-
-
-
 //delete category
-export const deleteCategoryCOntroller = async (req, res) => {
+export const deleteCategoryController = async (req, res) => {
   try {
     const { id } = req.params;
-    await CategoryModel.findByIdAndDelete(id);
-    res.status(200).send({
-      success: true,
-      message: "Categry Deleted Successfully",
-    });
+    // don't leave products pointing to a category that doesn't exist
+    const productCount = await productModel.countDocuments({ category: id });
+    if (productCount > 0) {
+      return res.status(400).send({
+        success: false,
+        message: `Move or delete the ${productCount} product(s) in this category first`,
+      });
+    }
+
+    await categoryModel.findByIdAndDelete(id);
+    res.status(200).send({ success: true, message: "Category deleted successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).send({
-      success: false,
-      message: "error while deleting category",
-      error,
-    });
+    res.status(500).send({ success: false, message: "Error while deleting category" });
   }
 };

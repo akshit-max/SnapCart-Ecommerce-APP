@@ -23,9 +23,11 @@ const productSchema = new mongoose.Schema(
       ref: "Category",
       required: true,
     },
+    // stock left
     quantity: {
       type: Number,
       required: true,
+      min: 0,
     },
     photo: {
       data: Buffer,
@@ -38,4 +40,4 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Products", productSchema);
+export default mongoose.model("Product", productSchema);
