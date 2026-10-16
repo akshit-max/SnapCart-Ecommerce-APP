@@ -1,24 +1,18 @@
-import React from "react";
-
-const CategoryForm = ({ handleSubmit, value, setValue }) => {
+const CategoryForm = ({ handleSubmit, value, setValue, buttonText = "Add" }) => {
   return (
-    <>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Enter new category"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        </div>
-
-        <button type="submit" className="btn btn-primary">
-          Submit
-        </button>
-      </form>
-    </>
+    <form onSubmit={handleSubmit} className="d-flex gap-2">
+      <input
+        type="text"
+        className="form-control"
+        placeholder="Category name"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        required
+      />
+      <button type="submit" className="btn btn-brand px-4">
+        {buttonText}
+      </button>
+    </form>
   );
 };
 

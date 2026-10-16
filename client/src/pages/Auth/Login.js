@@ -1,177 +1,77 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { FaUserCircle } from "react-icons/fa";
 import Layout from "../../components/Layout/Layout";
 import { useAuth } from "../../context/auth";
-import { FaUserCircle } from "react-icons/fa";
+import { getErrorMessage } from "../../utils/helpers";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [auth, setAuth] = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [, setAuth] = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const { data } = await axios.post(
-        "/api/v1/auth/login",
-        {
-          email,
-          password,
-        },
-      );
-
-      if (data?.success) {
-        toast.success("Login Successful");
-        setAuth({
-          ...auth,
-          user: data.user,
-          token: data.token,
-        });
-        localStorage.setItem("auth", JSON.stringify(data));
-        navigate("/");
-      } else {
-        toast.error(data?.message || "Login failed");
-      }
+      const { data } = await axios.post("/api/v1/auth/login", { email, password });
+      setAuth({ user: data.user, token: data.token });
+      toast.success("Welcome back, " + data.user.name);
+      // go back to the page that sent us here (cart, dashboard...)
+      navigate(location.state || "/");
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Something went wrong. Try again.");
+      toast.error(getErrorMessage(error));
     }
+    setLoading(false);
   };
 
   return (
-    <Layout title="Login | ShopVerse">
-      {/* STYLE */}
-      <style>{`
-        .login-wrapper {
-          min-height: 90vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-          padding: 20px;
-        }
+    <Layout title="Login">
+      <div className="auth-wrapper">
+        <div className="card-box auth-card">
+          <FaUserCircle className="auth-icon" />
+          <h4 className="page-title mb-4">Welcome back</h4>
 
-        .login-card {
-          width: 100%;
-          max-width: 420px;
-          background: #ffffff;
-          border-radius: 18px;
-          padding: 40px 30px;
-          box-shadow: 0 15px 40px rgba(0, 102, 255, 0.08);
-          border: 1px solid #e6efff;
-          text-align: center;
-        }
+          <form onSubmit={handleSubmit} className="text-start">
+            <label htmlFor="email" className="form-label small">Email</label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="form-control mb-3"
+              placeholder="Enter your email"
+              required
+            />
 
-        .login-icon {
-          font-size: 55px;
-          color: #2563eb;
-          margin-bottom: 12px;
-        }
-
-        .login-title {
-          font-size: 22px;
-          font-weight: 600;
-          margin-bottom: 25px;
-          color: #1e293b;
-        }
-
-        .form-label {
-          font-size: 13px;
-          font-weight: 500;
-          color: #475569;
-        }
-
-        .form-control {
-          height: 42px;
-          border-radius: 10px;
-          border: 1px solid #dbeafe;
-          font-size: 14px;
-          transition: all 0.2s ease;
-        }
-
-        .form-control:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-        }
-
-        .forgot-btn {
-          font-size: 12px;
-          color: #2563eb;
-        }
-
-        .forgot-btn:hover {
-          text-decoration: underline;
-        }
-
-        .login-btn {
-          height: 44px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
-          border: none;
-          font-weight: 500;
-          transition: all 0.25s ease;
-        }
-
-        .login-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
-        }
-      `}</style>
-
-      <div className="login-wrapper">
-        <div className="login-card">
-          <FaUserCircle className="login-icon" />
-
-          <div className="login-title">Welcome back</div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3 text-start">
-              <label htmlFor="email" className="form-label">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="form-control"
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-
-            <div className="mb-2 text-start">
-              <label htmlFor="password" className="form-label">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-control"
-                placeholder="Enter your password"
-                required
-              />
-            </div>
+            <label htmlFor="password" className="form-label small">Password</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="form-control mb-2"
+              placeholder="Enter your password"
+              required
+            />
 
             <div className="text-end mb-3">
-              <button
-                type="button"
-                className="btn p-0 forgot-btn"
-                onClick={() => navigate("/forgot-password")}
-              >
-                Forgot password?
-              </button>
+              <Link to="/forgot-password" className="small">Forgot password?</Link>
             </div>
 
-            <button type="submit" className="btn w-100 text-white login-btn">
-              Login
+            <button type="submit" className="btn btn-brand w-100 py-2" disabled={loading}>
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
+
+          <p className="small mt-3 mb-0">
+            New here? <Link to="/register">Create an account</Link>
+          </p>
         </div>
       </div>
     </Layout>

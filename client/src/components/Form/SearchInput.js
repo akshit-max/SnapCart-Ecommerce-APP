@@ -1,43 +1,31 @@
-import React from "react";
-import { useSearch } from "../../context/search";
-import axios from "axios";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 const SearchInput = () => {
-  const [values, setValues] = useSearch();
+  const [keyword, setKeyword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      const { data } = await axios.get(
-        `/api/v1/product/search/${values.keyword}`
-      );
-      setValues({ ...values, results: data });
-      navigate("/search");
-    } catch (error) {
-      console.log(error);
-    }
+    if (!keyword.trim()) return;
+    // keyword goes in the url so results survive a refresh and can be shared
+    navigate(`/search?q=${encodeURIComponent(keyword.trim())}`);
   };
+
   return (
-    <div>
-      <form
-        className="d-flex search-form"
-        role="search"
-        onSubmit={handleSubmit}
-      >
-        <input
-          className="form-control me-2"
-          type="search"
-          placeholder="Search"
-          aria-label="Search"
-          value={values.keyword}
-          onChange={(e) => setValues({ ...values, keyword: e.target.value })}
-        />
-        <button className="btn btn-outline-success" type="submit">
-          Search
-        </button>
-      </form>
-    </div>
+    <form className="d-flex search-form" role="search" onSubmit={handleSubmit}>
+      <input
+        className="form-control me-2"
+        type="search"
+        placeholder="Search products"
+        aria-label="Search"
+        value={keyword}
+        onChange={(e) => setKeyword(e.target.value)}
+      />
+      <button className="btn btn-outline-primary" type="submit">
+        Search
+      </button>
+    </form>
   );
 };
 

@@ -1,78 +1,67 @@
-import React from "react";
-import { NavLink, Link } from "react-router-dom";
-import { useAuth } from "../../context/auth";
-import toast from "react-hot-toast";
-import SearchInput from "../Form/SearchInput";
-import useCategory from "../../hooks/useCategory";
-import { useCart } from "../../context/cart";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import { Badge } from "antd";
 import { AiOutlineShoppingCart } from "react-icons/ai";
+import toast from "react-hot-toast";
+import { useAuth } from "../../context/auth";
+import { useCart } from "../../context/cart";
+import useCategory from "../../hooks/useCategory";
+import SearchInput from "../Form/SearchInput";
 
 const Header = () => {
   const [auth, setAuth] = useAuth();
-  const [cart] = useCart() || [];
+  const { cartCount } = useCart();
   const categories = useCategory();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    setAuth({
-      ...auth,
-      user: null,
-      token: "",
-    });
-    localStorage.removeItem("auth");
-    toast.success("Logout Successfully");
+    setAuth({ user: null, token: "" });
+    toast.success("Logged out");
+    navigate("/login");
   };
 
   return (
     <nav className="navbar navbar-expand-lg bg-white shadow-sm fixed-top">
       <div className="container">
-        {/* Logo */}
-        <Link className="navbar-brand fw-bold text-dark" to="/">
-          🛒 SnapCart
+        <Link className="navbar-brand" to="/">
+          SnapCart
         </Link>
 
-        {/* Toggle */}
         <button
           className="navbar-toggler border-0"
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#navbarContent"
+          aria-label="Toggle navigation"
         >
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        {/* Menu */}
         <div className="collapse navbar-collapse" id="navbarContent">
-          {/* Search */}
-          <div className="ms-auto me-3">
+          <div className="ms-auto me-lg-3">
             <SearchInput />
           </div>
 
-          <ul className="navbar-nav align-items-center gap-2">
+          <ul className="navbar-nav align-items-lg-center gap-lg-2">
             <li className="nav-item">
-              <NavLink className="nav-link text-dark" to="/">
+              <NavLink className="nav-link" to="/" end>
                 Home
               </NavLink>
             </li>
 
-            {/* Categories */}
             <li className="nav-item dropdown">
-              <Link
-                className="nav-link dropdown-toggle text-dark"
-                to="/categories"
+              <button
+                className="nav-link dropdown-toggle btn btn-link"
                 data-bs-toggle="dropdown"
               >
                 Categories
-              </Link>
-
-              <ul className="dropdown-menu shadow-sm border-0 rounded-3">
+              </button>
+              <ul className="dropdown-menu shadow-sm border-0">
                 <li>
                   <Link className="dropdown-item" to="/categories">
                     All Categories
                   </Link>
                 </li>
-
-                {categories?.map((c) => (
+                {categories.map((c) => (
                   <li key={c._id}>
                     <Link className="dropdown-item" to={`/category/${c.slug}`}>
                       {c.name}
@@ -82,61 +71,49 @@ const Header = () => {
               </ul>
             </li>
 
-            {/* Auth */}
             {!auth?.user ? (
               <>
                 <li className="nav-item">
-                  <NavLink className="nav-link text-dark" to="/register">
+                  <NavLink className="nav-link" to="/register">
                     Register
                   </NavLink>
                 </li>
-
                 <li className="nav-item">
-                  <NavLink className="btn btn-dark btn-sm px-3" to="/login">
+                  <Link className="btn btn-brand btn-sm px-3" to="/login">
                     Login
-                  </NavLink>
+                  </Link>
                 </li>
               </>
             ) : (
               <li className="nav-item dropdown">
-                <span
-                  className="nav-link dropdown-toggle text-dark"
+                <button
+                  className="nav-link dropdown-toggle btn btn-link"
                   data-bs-toggle="dropdown"
-                  style={{ cursor: "pointer" }}
                 >
-                  {auth?.user?.name}
-                </span>
-
-                <ul className="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                  {auth.user.name}
+                </button>
+                <ul className="dropdown-menu dropdown-menu-end shadow-sm border-0">
                   <li>
-                    <NavLink
-                      to={`/dashboard/${
-                        auth?.user?.role === 1 ? "admin" : "user"
-                      }`}
+                    <Link
                       className="dropdown-item"
+                      to={auth.user.role === 1 ? "/dashboard/admin" : "/dashboard/user"}
                     >
                       Dashboard
-                    </NavLink>
+                    </Link>
                   </li>
-
                   <li>
-                    <NavLink
-                      onClick={handleLogout}
-                      to="/login"
-                      className="dropdown-item text-danger"
-                    >
+                    <button className="dropdown-item text-danger" onClick={handleLogout}>
                       Logout
-                    </NavLink>
+                    </button>
                   </li>
                 </ul>
               </li>
             )}
 
-            {/* Cart */}
             <li className="nav-item">
-              <NavLink className="nav-link text-dark" to="/cart">
-                <Badge count={cart?.length || 0} showZero>
-                  <AiOutlineShoppingCart size={20} />
+              <NavLink className="nav-link" to="/cart" aria-label="Cart">
+                <Badge count={cartCount} showZero size="small">
+                  <AiOutlineShoppingCart size={22} />
                 </Badge>
               </NavLink>
             </li>

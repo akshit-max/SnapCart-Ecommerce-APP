@@ -1,121 +1,64 @@
-import React, { useState, useEffect } from "react";
-import AdminMenu from "../../components/Layout/AdminMenu";
-import Layout from "./../../components/Layout/Layout";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import { formatPrice, photoUrl } from "../../utils/helpers";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
 
-  const getAllProducts = async () => {
-    try {
-      const { data } = await axios.get("/api/v1/product/get-product");
-      setProducts(data.products);
-    } catch (error) {
-      toast.error("Something went wrong");
-    }
-  };
-
   useEffect(() => {
-    getAllProducts();
+    axios
+      .get("/api/v1/product/get-product")
+      .then(({ data }) => setProducts(data.products))
+      .catch(() => toast.error("Could not load products"));
   }, []);
 
   return (
-    <Layout title={"All Products"}>
-      <style>{`
-        .products-wrapper {
-          padding: 30px;
-        }
-
-        .products-title {
-          font-weight: 600;
-          color: #1e293b;
-        }
-
-        .product-card {
-          border-radius: 16px;
-          border: 1px solid #e6efff;
-          background: #ffffff;
-          overflow: hidden;
-          transition: all 0.25s ease;
-          height: 100%;
-        }
-
-        .product-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 12px 30px rgba(37, 99, 235, 0.15);
-        }
-
-        .product-img {
-          height: 260px;
-          object-fit: cover;
-          width: 100%;
-          object-position:top;
-        }
-
-        .product-body {
-          padding: 15px;
-        }
-
-        .product-name {
-          font-size: 15px;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 5px;
-        }
-
-        .product-desc {
-          font-size: 13px;
-          color: #64748b;
-        }
-
-        .product-link {
-          text-decoration: none;
-        }
-      `}</style>
-
-      <div className="container-fluid products-wrapper">
-        <div className="row">
-          {/* SIDEBAR */}
-          <div className="col-md-3">
-            <AdminMenu />
-          </div>
-
-          {/* MAIN */}
-          <div className="col-md-9">
-            <h4 className="products-title mb-4">All Products</h4>
-
-            <div className="row">
-              {products?.map((p) => (
-                <div className="col-md-4 col-sm-6 mb-4" key={p._id}>
-                  <Link
-                    to={`/dashboard/admin/product/${p.slug}`}
-                    className="product-link"
-                  >
-                    <div className="product-card">
-                      <img
-                        src={`/api/v1/product/product-photo/${p._id}`}
-                        alt={p.name}
-                        className="product-img"
-                      />
-
-                      <div className="product-body">
-                        <div className="product-name">{p.name}</div>
-
-                        <div className="product-desc">
-                          {p.description.substring(0, 60)}...
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+    <DashboardLayout title="Products" admin>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h4 className="page-title mb-0">Products ({products.length})</h4>
+        <Link to="/dashboard/admin/create-product" className="btn btn-brand btn-sm">
+          + Add Product
+        </Link>
       </div>
-    </Layout>
+
+      <div className="card-box p-0 table-responsive">
+        <table className="table align-middle mb-0">
+          <thead className="table-light">
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p._id}>
+                <td>
+                  <div className="d-flex align-items-center gap-2">
+                    <img src={photoUrl(p._id)} alt={p.name} width={44} height={44}
+                      className="rounded" style={{ objectFit: "cover" }} loading="lazy" />
+                    {p.name}
+                  </div>
+                </td>
+                <td>{p.category?.name}</td>
+                <td>{formatPrice(p.price)}</td>
+                <td className={p.quantity <= 5 ? "text-danger fw-semibold" : ""}>{p.quantity}</td>
+                <td>
+                  <Link to={`/dashboard/admin/product/${p.slug}`} className="btn btn-sm btn-outline-primary">
+                    Edit
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </DashboardLayout>
   );
 };
 

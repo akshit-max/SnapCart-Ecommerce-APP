@@ -1,104 +1,67 @@
-import React from "react";
-import AdminMenu from "../../components/Layout/AdminMenu";
-import Layout from "./../../components/Layout/Layout";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import axios from "axios";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import Spinner from "../../components/Spinner";
 import { useAuth } from "../../context/auth";
+import { formatPrice } from "../../utils/helpers";
 
 const AdminDashboard = () => {
   const [auth] = useAuth();
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    axios
+      .get("/api/v1/order/stats")
+      .then(({ data }) => setData(data))
+      .catch((error) => console.log(error));
+  }, []);
+
+  const cards = data
+    ? [
+        { label: "Revenue", value: formatPrice(data.stats.revenue) },
+        { label: "Orders", value: data.stats.orders },
+        { label: "Products", value: data.stats.products },
+        { label: "Users", value: data.stats.users },
+      ]
+    : [];
 
   return (
-    <Layout title={"Admin Dashboard"}>
-      <div
-        className="container-fluid px-4 py-3"
-        style={{ background: "#f4f7fb", minHeight: "100vh" }}
-      >
-        <div className="row">
+    <DashboardLayout title="Admin Dashboard" admin>
+      <h4 className="page-title">Welcome, {auth?.user?.name}</h4>
+      <p className="text-muted-soft">Here's how the store is doing.</p>
 
-          {/* Sidebar */}
-          <div className="col-md-3">
-            <AdminMenu />
+      {!data ? (
+        <Spinner />
+      ) : (
+        <>
+          <div className="row g-3 mb-4">
+            {cards.map((card) => (
+              <div className="col-6 col-lg-3" key={card.label}>
+                <div className="card-box stat-card">
+                  <div className="small text-muted-soft">{card.label}</div>
+                  <div className="stat-value">{card.value}</div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Main */}
-          <div className="col-md-9">
-
-            {/* Header */}
-            <div className="mb-4">
-              <h2 style={{ fontWeight: "600", color: "#1e293b" }}>
-                Admin Dashboard
-              </h2>
-              <p style={{ color: "#64748b" }}>
-                Overview of your account details
-              </p>
-            </div>
-
-            {/* Profile Card */}
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: "14px",
-                padding: "30px",
-                maxWidth: "600px",
-                boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
-              }}
-            >
-              {/* Avatar */}
-              <div
-                style={{
-                  width: "70px",
-                  height: "70px",
-                  borderRadius: "50%",
-                  background: "#3b82f6",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "26px",
-                  fontWeight: "600",
-                  marginBottom: "20px",
-                }}
-              >
-                {auth?.user?.name?.charAt(0).toUpperCase()}
-              </div>
-
-              {/* Info */}
-              <div className="mb-3">
-                <p style={{ margin: 0, color: "#64748b" }}>Admin Name</p>
-                <h5 style={{ margin: 0 }}>{auth?.user?.name}</h5>
-              </div>
-
-              <div className="mb-3">
-                <p style={{ margin: 0, color: "#64748b" }}>Email Address</p>
-                <h5 style={{ margin: 0 }}>{auth?.user?.email}</h5>
-              </div>
-
-              <div className="mb-3">
-                <p style={{ margin: 0, color: "#64748b" }}>Contact Number</p>
-                <h5 style={{ margin: 0 }}>{auth?.user?.phone}</h5>
-              </div>
-
-              {/* Divider */}
-              <hr style={{ borderColor: "#e5e7eb" }} />
-
-              {/* Status */}
-              <div
-                style={{
-                  background: "#eff6ff",
-                  padding: "10px 15px",
-                  borderRadius: "8px",
-                  color: "#1e40af",
-                  fontWeight: "500",
-                  width: "fit-content",
-                }}
-              >
-                Active Admin Account
-              </div>
-            </div>
-
+          <div className="card-box">
+            <h6 className="fw-semibold mb-3">Low stock (5 or less)</h6>
+            {data.lowStock.length === 0 ? (
+              <p className="text-muted-soft mb-0">All products are well stocked.</p>
+            ) : (
+              data.lowStock.map((p) => (
+                <div key={p._id} className="d-flex justify-content-between border-top py-2">
+                  <Link to={`/dashboard/admin/product/${p.slug}`}>{p.name}</Link>
+                  <span className="text-danger fw-semibold">{p.quantity} left</span>
+                </div>
+              ))
+            )}
           </div>
-        </div>
-      </div>
-    </Layout>
+        </>
+      )}
+    </DashboardLayout>
   );
 };
 
