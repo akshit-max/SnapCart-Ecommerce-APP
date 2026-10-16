@@ -8,6 +8,15 @@ SnapCart is a full stack e-commerce web app built with the **MERN stack** (Mongo
 Customers can browse and filter products, manage a cart, pay online with **Razorpay** or choose cash on delivery, and track their orders.
 Admins get a dashboard to manage products, categories, orders and users.
 
+### Highlights
+
+- **Razorpay checkout** with server-side order creation, HMAC-SHA256 signature verification and automatic refunds on cancellation
+- **No overselling:** stock is reserved with an atomic MongoDB update and rolled back if any item or the payment fails
+- **Tamper-proof pricing:** the client sends only product ids and quantities, every total is calculated on the server
+- **Lean responses:** filtering, sorting and pagination run on the server and list responses skip image data (full-catalogue filter response went from ~8.6 MB to ~4 KB)
+- **Smaller bundle:** lazy-loaded pages and dependency cleanup cut the main JS bundle from 250.6 kB to 145.8 kB gzipped
+- **Tested:** 15 API tests on an in-memory MongoDB, run by GitHub Actions on every push
+
 ---
 
 ## Table of Contents
