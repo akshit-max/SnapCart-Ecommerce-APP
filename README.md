@@ -130,7 +130,6 @@ The application follows a modular MERN architecture:
 
 ## 📌 Purpose of This Project
 
-This project was built to demonstrate:
 
 * Full-stack development using MERN
 * Real-world e-commerce workflows
