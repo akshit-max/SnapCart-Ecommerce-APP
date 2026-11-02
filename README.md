@@ -129,8 +129,6 @@ The application follows a modular MERN architecture:
 ---
 
 ## 📌 Purpose of This Project
-
-
 * Full-stack development using MERN
 * Real-world e-commerce workflows
 * Secure authentication & authorization
