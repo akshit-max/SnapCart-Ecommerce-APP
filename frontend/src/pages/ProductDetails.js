@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
-import Layout from "./../components/Layout/Layout";
+import Layout from "../components/Layout/Layout";
 import ProductCard from "../components/ProductCard";
 import Spinner from "../components/Spinner";
 import { useCart } from "../context/cart";

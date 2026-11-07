@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FaKey } from "react-icons/fa";
-import Layout from "./../../components/Layout/Layout";
+import Layout from "../../components/Layout/Layout";
 import { getErrorMessage } from "../../utils/helpers";
 
 const ForgotPassword = () => {

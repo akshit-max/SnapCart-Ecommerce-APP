@@ -1,5 +1,5 @@
 import userModel from "../models/userModel.js";
-import { comparePassword, hashPassword, publicUser } from "./../helpers/authHelper.js";
+import { comparePassword, hashPassword, publicUser } from "../helpers/authHelper.js";
 import JWT from "jsonwebtoken";
 
 const isValidEmail = (email) => /^\S+@\S+\.\S+$/.test(email);

@@ -85,17 +85,22 @@ Admins get a dashboard to manage products, categories, orders and users.
 
 ## Architecture
 
-The backend follows the **MVC pattern**. Routes only map URLs to controllers, controllers hold the business logic,
-and models define the data. React is the view layer and talks to the API over JSON.
+The backend follows the **MVC pattern** with resilient system design patterns (Circuit Breaker, Redis Cache-Aside, and Webhook Reconciliation). Routes map URLs to controllers, controllers hold the business logic, and models define the data. React is the view layer and talks to the API over JSON.
 
 ```mermaid
-flowchart LR
-    A[React client] -->|HTTP / JSON| B[Express routes]
-    B --> C[Middleware<br/>requireSignIn / isAdmin]
+flowchart TD
+    A[React Client] -->|HTTP / JSON| B[Express 5 API]
+    B --> C[Security & Middleware<br/>Helmet, Rate-Limiter, requireSignIn, isAdmin]
+    
     C --> D[Controllers]
-    D --> E[Mongoose models]
+    D <-->|Cache-Aside / Sub-5ms Reads| R[(Redis Cache / In-Memory)]
+    D --> E[Mongoose Models & Indexes]
     E --> F[(MongoDB Atlas)]
-    D <-->|create order / refund| G[Razorpay API]
+    
+    D <-->|Circuit Breaker Protected<br/>Opossum + Fallback| G[Razorpay API]
+    G -.->|Async Webhooks| D
+    
+    H[15-min Background Sweeper] -->|Recover Stranded Inventory| E
 ```
 
 **Data models**
@@ -229,6 +234,19 @@ Register a normal account, then set `role` to `1` for that user in MongoDB.
 In Razorpay test mode no real money is charged. Use the UPI ID **`success@razorpay`**
 to simulate a successful payment, or `failure@razorpay` for a failed one.
 
+### Docker Quickstart
+
+To spin up the complete containerized stack (Backend + Frontend + MongoDB + Redis):
+
+```bash
+docker-compose up --build
+```
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- MongoDB: mongodb://localhost:27017
+- Redis: redis://localhost:6379
+
 ### Production build
 
 The Express server also serves the React build:
@@ -287,6 +305,9 @@ They cover:
 - Stock restore on cancel
 - Razorpay signature verification (valid and fake signatures)
 - Order status updates (admin only, invalid statuses rejected)
+- Abandoned checkout inventory recovery (>15-minute expiration sweeper)
+- Razorpay server-to-server webhook payment reconciliation
+- Infrastructure health check and payment circuit breaker status monitoring
 
 The same tests run on every push through GitHub Actions, along with a production build of the client.
 
@@ -338,14 +359,22 @@ Base URL: `/api/v1`. Protected routes expect the JWT in the `Authorization` head
 | Method | Endpoint                     | Access | Description |
 | ------ | ---------------------------- | ------ | ----------- |
 | POST   | `/order/cod`                 | User   | Place a cash on delivery order |
-| POST   | `/order/razorpay/create`     | User   | Reserve stock and create a Razorpay order |
+| POST   | `/order/razorpay/create`     | User   | Reserve stock and create a Razorpay order (Circuit Breaker protected) |
 | POST   | `/order/razorpay/verify`     | User   | Verify the payment signature and mark the order paid |
+| POST   | `/order/webhook`             | Public | Razorpay asynchronous webhook reconciliation |
+| GET    | `/order/circuit-status`      | Public | Payment Circuit Breaker health state & metrics |
 | DELETE | `/order/razorpay/:orderId`   | User   | Remove an unpaid order when the popup is closed |
 | GET    | `/order/my-orders`           | User   | Logged in user's orders |
 | PUT    | `/order/cancel/:orderId`     | User   | Cancel an order that isn't processed yet (refunds if paid) |
 | GET    | `/order/all-orders`          | Admin  | All orders |
 | PUT    | `/order/status/:orderId`     | Admin  | Update order status |
 | GET    | `/order/stats`               | Admin  | Dashboard numbers and low stock products |
+
+### Health & Monitoring
+
+| Method | Endpoint         | Access | Description |
+| ------ | ---------------- | ------ | ----------- |
+| GET    | `/health`        | Public | System uptime, timestamp, and MongoDB connection status |
 
 ### Contact
 

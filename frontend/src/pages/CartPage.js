@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import Layout from "./../components/Layout/Layout";
+import Layout from "../components/Layout/Layout";
 import { useCart } from "../context/cart";
 import { useAuth } from "../context/auth";
 import { formatPrice, getErrorMessage, loadRazorpay, photoUrl } from "../utils/helpers";
