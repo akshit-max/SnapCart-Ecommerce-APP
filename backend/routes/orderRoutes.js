@@ -2,6 +2,7 @@ import express from "express";
 import {
   cancelOrderController,
   cancelRazorpayOrderController,
+  circuitStatusController,
   codOrderController,
   createRazorpayOrderController,
   getAllOrdersController,
@@ -16,6 +17,7 @@ import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 //checkout
+router.get("/circuit-status", circuitStatusController);
 router.post("/webhook", razorpayWebhookController);
 router.post("/cod", requireSignIn, codOrderController);
 router.post("/razorpay/create", requireSignIn, createRazorpayOrderController);

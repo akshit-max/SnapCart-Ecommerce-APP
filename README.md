@@ -10,12 +10,15 @@ Admins get a dashboard to manage products, categories, orders and users.
 
 ### Highlights
 
-- **Razorpay checkout** with server-side order creation, HMAC-SHA256 signature verification and automatic refunds on cancellation
+- **Razorpay checkout & webhooks** with server-side order creation, HMAC-SHA256 signature verification, server-to-server webhook reconciliation and automatic refunds on cancellation
 - **No overselling:** stock is reserved with an atomic MongoDB update and rolled back if any item or the payment fails
+- **Abandoned cart recovery:** background worker periodically detects dropped checkouts (>15 min) and returns reserved inventory
+- **Redis Cache-Aside:** catalog and product queries are cached with write-through invalidation on admin edits
 - **Tamper-proof pricing:** the client sends only product ids and quantities, every total is calculated on the server
 - **Lean responses:** filtering, sorting and pagination run on the server and list responses skip image data (full-catalogue filter response went from ~8.6 MB to ~4 KB)
 - **Smaller bundle:** lazy-loaded pages and dependency cleanup cut the main JS bundle from 250.6 kB to 145.8 kB gzipped
-- **Tested:** 15 API tests on an in-memory MongoDB, run by GitHub Actions on every push
+- **Tested:** 18 API tests on an in-memory MongoDB, run by GitHub Actions on every push
+- **Dockerized:** multi-stage Dockerfiles and docker-compose orchestration ready out of the box
 
 ---
 
@@ -68,12 +71,14 @@ Admins get a dashboard to manage products, categories, orders and users.
 | ---------- | ---------- |
 | Frontend   | React 18, React Router 7, Context API, Axios, Bootstrap 5, Ant Design |
 | Backend    | Node.js, Express 5 |
-| Database   | MongoDB Atlas with Mongoose |
-| Payments   | Razorpay (orders API, signature verification, refunds) |
+| Database   | MongoDB Atlas with Mongoose (compound & text indexes) |
+| Caching    | Redis (Cache-Aside with in-memory fallback) |
+| Payments   | Razorpay (orders API, HMAC signature verification, webhooks, refunds) |
 | Auth       | JSON Web Tokens, bcrypt |
-| Security   | helmet, express-rate-limit, CORS |
+| Security   | helmet, express-rate-limit, CORS, timing-safe comparisons |
 | Email      | Nodemailer (contact form) |
-| Testing    | Node test runner, Supertest, mongodb-memory-server |
+| DevOps     | Docker, Docker Compose, Multi-stage builds |
+| Testing    | Node test runner, Supertest, mongodb-memory-server (18 tests) |
 | CI         | GitHub Actions (runs tests and builds the client on every push) |
 
 ---

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import Razorpay from "razorpay";
+import CircuitBreaker from "opossum";
 import orderModel, { ORDER_STATUS } from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
@@ -14,6 +15,37 @@ const getRazorpay = () => {
     });
   }
   return razorpay;
+};
+
+// Circuit Breaker wrapping external Razorpay API calls
+const circuitOptions = {
+  timeout: 5000, // 5s timeout on external gateway
+  errorThresholdPercentage: 50, // trip circuit if 50% of requests fail
+  resetTimeout: 10000, // wait 10s before probing gateway (half-open)
+};
+
+const callRazorpayCreate = async (payload) => getRazorpay().orders.create(payload);
+
+export const paymentBreaker = new CircuitBreaker(callRazorpayCreate, circuitOptions);
+
+// Graceful fallback when payment gateway is down
+paymentBreaker.fallback(() => {
+  const err = new Error("Online payment is temporarily unavailable. Please choose Cash on Delivery.");
+  err.status = 503;
+  throw err;
+});
+
+// Exposes circuit health state for monitoring and frontend degradation
+export const circuitStatusController = (req, res) => {
+  res.status(200).send({
+    success: true,
+    circuit: {
+      closed: paymentBreaker.closed,
+      opened: paymentBreaker.opened,
+      halfOpen: paymentBreaker.halfOpen,
+      stats: paymentBreaker.stats,
+    },
+  });
 };
 
 const badRequest = (message) => {
@@ -103,7 +135,7 @@ export const createRazorpayOrderController = async (req, res) => {
     const reserved = await reserveStock(req.body.cart);
     items = reserved.items;
 
-    const razorpayOrder = await getRazorpay().orders.create({
+    const razorpayOrder = await paymentBreaker.fire({
       amount: Math.round(reserved.total * 100), // razorpay wants paise
       currency: "INR",
     });

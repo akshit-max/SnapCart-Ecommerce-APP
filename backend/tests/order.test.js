@@ -200,4 +200,11 @@ describe("Order API", () => {
     assert.equal(res.body.status, "ok");
     assert.equal(res.body.database, "connected");
   });
+
+  it("checks payment circuit breaker status", async () => {
+    const res = await request(app).get("/api/v1/order/circuit-status");
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(typeof res.body.circuit.closed, "boolean");
+  });
 });
