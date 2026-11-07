@@ -17,7 +17,7 @@ Admins get a dashboard to manage products, categories, orders and users.
 - **Tamper-proof pricing:** the client sends only product ids and quantities, every total is calculated on the server
 - **Lean responses:** filtering, sorting and pagination run on the server and list responses skip image data (full-catalogue filter response went from ~8.6 MB to ~4 KB)
 - **Smaller bundle:** lazy-loaded pages and dependency cleanup cut the main JS bundle from 250.6 kB to 145.8 kB gzipped
-- **Tested:** 18 API tests on an in-memory MongoDB, run by GitHub Actions on every push
+- **Tested:** 19 API tests on an in-memory MongoDB, run by GitHub Actions on every push
 - **Dockerized:** multi-stage Dockerfiles and docker-compose orchestration ready out of the box
 
 ---
@@ -78,7 +78,7 @@ Admins get a dashboard to manage products, categories, orders and users.
 | Security   | helmet, express-rate-limit, CORS, timing-safe comparisons |
 | Email      | Nodemailer (contact form) |
 | DevOps     | Docker, Docker Compose, Multi-stage builds |
-| Testing    | Node test runner, Supertest, mongodb-memory-server (18 tests) |
+| Testing    | Node test runner, Supertest, mongodb-memory-server (19 tests) |
 | CI         | GitHub Actions (runs tests and builds the client on every push) |
 
 ---
