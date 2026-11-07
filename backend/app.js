@@ -42,7 +42,7 @@ app.use("/api", (req, res) => {
 
 if (isProd) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const buildPath = path.join(__dirname, "client", "build");
+  const buildPath = path.join(__dirname, "..", "frontend", "build");
   app.use(express.static(buildPath));
 
   // let react router handle every other page (fixes 404 on refresh)

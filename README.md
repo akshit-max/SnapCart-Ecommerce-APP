@@ -139,45 +139,51 @@ sequenceDiagram
 
 ```
 SnapCart/
-├── app.js                  # express app: middleware + routes (imported by tests)
-├── server.js               # connects to MongoDB and starts the server
-├── config/
-│   └── db.js
-├── controllers/
-│   ├── authController.js       # register, login, reset password, profile, users
-│   ├── categoryController.js
-│   ├── productController.js    # CRUD, filters + pagination, search, photos
-│   ├── orderController.js      # COD, Razorpay, cancel + refund, status, stats
-│   └── contactController.js
-├── middlewares/
-│   └── authMiddleware.js       # requireSignIn, isAdmin
-├── models/
-│   ├── userModel.js
-│   ├── categoryModel.js
-│   ├── productModel.js
-│   └── orderModel.js
-├── routes/
-│   ├── authRoutes.js
-│   ├── categoryRoutes.js
-│   ├── productRoutes.js
-│   ├── orderRoutes.js
-│   └── contactRoutes.js
-├── helpers/
-│   └── authHelper.js           # bcrypt helpers, safe user object
-├── tests/                      # API tests
+├── backend/
+│   ├── app.js                  # express app: middleware + routes (imported by tests)
+│   ├── server.js               # connects to MongoDB and starts the server
+│   ├── config/
+│   │   └── db.js
+│   ├── controllers/
+│   │   ├── authController.js       # register, login, reset password, profile, users
+│   │   ├── categoryController.js
+│   │   ├── productController.js    # CRUD, filters + pagination, search, photos
+│   │   ├── orderController.js      # COD, Razorpay, cancel + refund, status, stats
+│   │   └── contactController.js
+│   ├── middlewares/
+│   │   └── authMiddleware.js       # requireSignIn, isAdmin
+│   ├── models/
+│   │   ├── userModel.js
+│   │   ├── categoryModel.js
+│   │   ├── productModel.js
+│   │   └── orderModel.js
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── categoryRoutes.js
+│   │   ├── productRoutes.js
+│   │   ├── orderRoutes.js
+│   │   └── contactRoutes.js
+│   ├── helpers/
+│   │   └── authHelper.js           # bcrypt helpers, safe user object
+│   ├── tests/                      # API tests
+│   ├── .env.example
+│   └── package.json
+├── frontend/                   # React app
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Layout/         # Header, Footer, Layout, DashboardLayout, menus
+│   │   │   ├── Form/           # ProductForm, CategoryForm, SearchInput
+│   │   │   ├── Routes/         # PrivateRoute (user + admin)
+│   │   │   ├── ProductCard.js
+│   │   │   └── OrderCard.js
+│   │   ├── context/            # auth and cart state
+│   │   ├── hooks/              # useCategory
+│   │   ├── pages/              # shop pages, Auth/, user/, Admin/
+│   │   └── utils/              # price/date formatting, Razorpay loader
+│   └── package.json
 ├── .github/workflows/ci.yml
-└── client/                     # React app
-    └── src/
-        ├── components/
-        │   ├── Layout/         # Header, Footer, Layout, DashboardLayout, menus
-        │   ├── Form/           # ProductForm, CategoryForm, SearchInput
-        │   ├── Routes/         # PrivateRoute (user + admin)
-        │   ├── ProductCard.js
-        │   └── OrderCard.js
-        ├── context/            # auth and cart state
-        ├── hooks/              # useCategory
-        ├── pages/              # shop pages, Auth/, user/, Admin/
-        └── utils/              # price/date formatting, Razorpay loader
+└── package.json                # root runner scripts
 ```
 
 ---
@@ -196,11 +202,11 @@ SnapCart/
 git clone https://github.com/akshit-max/SnapCart-Ecommerce-APP.git
 cd SnapCart-Ecommerce-APP
 
-npm install               # backend
-npm install --prefix client
+npm install --prefix backend    # backend dependencies
+npm install --prefix frontend   # frontend dependencies
 ```
 
-Create a `.env` file in the root folder (see [Environment Variables](#environment-variables)), then run:
+Create a `.env` file in the `backend/` folder (see [Environment Variables](#environment-variables)), then run:
 
 ```bash
 npm run dev
@@ -232,11 +238,11 @@ NODE_ENV=production npm start
 | Command          | What it does |
 | ---------------- | ------------ |
 | `npm run dev`    | Runs the backend (nodemon) and the React dev server together |
-| `npm run server` | Backend only |
-| `npm run client` | Frontend only |
+| `npm run backend` / `npm run server` | Backend only |
+| `npm run frontend` | Frontend only |
 | `npm test`       | Runs the API tests |
-| `npm run build`  | Installs client packages and builds the React app |
-| `npm start`      | Starts the server (used in production) |
+| `npm run build`  | Installs frontend packages and builds the React app |
+| `npm start`      | Starts the backend server (used in production) |
 
 ---
 
