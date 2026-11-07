@@ -1,3 +1,12 @@
+# ============================================================================
+# DOCKER COMPOSE ORCHESTRATION
+# Runs the full production-like local stack:
+#   - Backend: Express 5 API (Port 8080)
+#   - Frontend: Nginx serving React build (Port 3000)
+#   - Database: MongoDB 7
+#   - Cache: Redis 7
+# Usage: docker-compose up --build
+# ============================================================================
 services:
   backend:
     build:

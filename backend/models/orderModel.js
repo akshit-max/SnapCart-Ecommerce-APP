@@ -38,7 +38,11 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for order history queries and abandoned pending order cleanups
+// ============================================================================
+// DATABASE INDEXING (Query Performance Optimization)
+// 1. Compound Index { buyer: 1, createdAt: -1 }: O(log N) lookup of customer order history.
+// 2. Status Index { "payment.status": 1, createdAt: 1 }: O(1) retrieval for the 15-min sweeper.
+// ============================================================================
 orderSchema.index({ buyer: 1, createdAt: -1 });
 orderSchema.index({ "payment.status": 1, createdAt: 1 });
 

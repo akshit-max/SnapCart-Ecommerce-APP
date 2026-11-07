@@ -133,6 +133,7 @@ describe("Order API", () => {
     assert.equal(invalid.status, 400);
   });
 
+  // System Design Test 1: Periodic sweeper recovers stock from abandoned checkouts
   it("cleans up abandoned pending orders and restores reserved stock", async () => {
     const product = await createProduct({ quantity: 5 });
     await productModel.updateOne({ _id: product._id }, { $inc: { quantity: -2 } });
@@ -154,6 +155,7 @@ describe("Order API", () => {
     assert.equal(found, null);
   });
 
+  // System Design Test 2: Server-to-server webhook payment reconciliation
   it("processes razorpay webhook event and marks order paid", async () => {
     const product = await createProduct();
     const { user } = await createUser({ email: "webhook-buyer@test.com" });
@@ -194,6 +196,7 @@ describe("Order API", () => {
     assert.equal(updated.payment.razorpayPaymentId, "pay_webhook456");
   });
 
+  // System Design Test 3: Infrastructure health check endpoint for load balancers
   it("checks system health status endpoint", async () => {
     const res = await request(app).get("/api/v1/health");
     assert.equal(res.status, 200);
@@ -201,6 +204,7 @@ describe("Order API", () => {
     assert.equal(res.body.database, "connected");
   });
 
+  // System Design Test 4: Opossum Circuit Breaker monitoring endpoint
   it("checks payment circuit breaker status", async () => {
     const res = await request(app).get("/api/v1/order/circuit-status");
     assert.equal(res.status, 200);

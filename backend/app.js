@@ -30,7 +30,11 @@ app.use("/api/v1/auth/register", strictLimiter);
 app.use("/api/v1/auth/forgot-password", strictLimiter);
 app.use("/api/v1/contact", strictLimiter);
 
-// system health check endpoint
+// ============================================================================
+// SYSTEM DESIGN PATTERN: HEALTH CHECK & OBSERVABILITY
+// Standard endpoint used by load balancers, Kubernetes probes, and monitoring
+// tools to verify API uptime and active database connectivity.
+// ============================================================================
 app.get("/api/v1/health", (req, res) => {
   res.status(200).send({
     status: "ok",

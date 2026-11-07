@@ -1,3 +1,17 @@
+// ============================================================================
+// SYSTEM DESIGN PATTERN: REDIS CACHE-ASIDE WITH IN-MEMORY RESILIENT FALLBACK
+// Architecture:
+//   1. READ (Cache-Aside):
+//      - Incoming query checks Redis for the key first.
+//      - If CACHE HIT: Returns cached JSON in sub-5ms (bypassing MongoDB entirely).
+//      - If CACHE MISS: Queries MongoDB, sets value in Redis with a 5-min TTL, then returns.
+//   2. WRITE (Cache Invalidation):
+//      - When an admin creates, updates, or deletes a product/category, matching
+//        cache keys are purged immediately so stale data is never served.
+//   3. ZERO-CRASH RESILIENCE:
+//      - If Redis is down, disconnected, or absent during local development,
+//        the helper seamlessly falls back to a Node.js in-memory Map.
+// ============================================================================
 import Redis from "ioredis";
 
 // In-memory fallback map if Redis is not running locally

@@ -17,7 +17,15 @@ const getRazorpay = () => {
   return razorpay;
 };
 
-// Circuit Breaker wrapping external Razorpay API calls
+// ============================================================================
+// SYSTEM DESIGN PATTERN: CIRCUIT BREAKER (Fault-Tolerance & Resilience)
+// Problem: If Razorpay API experiences latency or downtime, checkout requests
+//          pile up and hang the server event loop.
+// Solution: Opossum Circuit Breaker tracks gateway health:
+//   - CLOSED (Normal): Requests go through to Razorpay.
+//   - OPEN (Tripped): If 50% fail or timeout (>5s), trips open. Fails fast & prompts COD.
+//   - HALF-OPEN (Testing): After 10s reset timeout, lets one request test if gateway recovered.
+// ============================================================================
 const circuitOptions = {
   timeout: 5000, // 5s timeout on external gateway
   errorThresholdPercentage: 50, // trip circuit if 50% of requests fail
@@ -28,14 +36,14 @@ const callRazorpayCreate = async (payload) => getRazorpay().orders.create(payloa
 
 export const paymentBreaker = new CircuitBreaker(callRazorpayCreate, circuitOptions);
 
-// Graceful fallback when payment gateway is down
+// Graceful fallback when payment gateway is down - shields users from waiting on broken gateway
 paymentBreaker.fallback(() => {
   const err = new Error("Online payment is temporarily unavailable. Please choose Cash on Delivery.");
   err.status = 503;
   throw err;
 });
 
-// Exposes circuit health state for monitoring and frontend degradation
+// Exposes circuit health state for monitoring dashboards and automated frontend degradation
 export const circuitStatusController = (req, res) => {
   res.status(200).send({
     success: true,
@@ -211,8 +219,13 @@ export const cancelRazorpayOrderController = async (req, res) => {
   }
 };
 
-// Sweeps abandoned pending checkout sessions older than maxAgeMinutes
-// Restores inventory so abandoned carts never permanently lock stock
+// ============================================================================
+// SYSTEM DESIGN PATTERN: RECONCILIATION SWEEPER (Zombie Inventory Recovery)
+// Problem: If a buyer begins online payment but closes the tab or loses internet,
+//          the reserved stock remains decremented in a "Pending" order forever.
+// Solution: Periodic background sweeper detects orders older than 15 minutes that
+//          are still "Pending", returns reserved inventory, and deletes the dead order.
+// ============================================================================
 export const cleanupExpiredPendingOrders = async (maxAgeMinutes = 15) => {
   try {
     const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
@@ -233,8 +246,14 @@ export const cleanupExpiredPendingOrders = async (maxAgeMinutes = 15) => {
   }
 };
 
-// Razorpay Server-to-Server Webhook handler
-// Reconciles payments asynchronously if buyer disconnects or closes tab right after paying
+// ============================================================================
+// SYSTEM DESIGN PATTERN: SERVER-TO-SERVER WEBHOOK (Zero-Loss Payment Sync)
+// Problem: Client-side payment callbacks fail if user closes browser, loses mobile
+//          network, or battery dies right after entering their UPI PIN.
+// Solution: Razorpay sends an asynchronous server-to-server POST event.
+//          We verify its HMAC-SHA256 signature using timingSafeEqual to prevent
+//          timing attacks, then update the order to "Paid" or restore stock if failed.
+// ============================================================================
 export const razorpayWebhookController = async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;

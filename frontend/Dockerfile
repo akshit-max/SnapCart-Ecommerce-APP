@@ -1,3 +1,10 @@
+# ============================================================================
+# MULTI-STAGE FRONTEND DOCKERFILE
+# Stage 1: Build the optimized React production bundle
+# Stage 2: Serve compiled HTML/JS/CSS through ultra-lightweight Nginx (~25MB)
+# ============================================================================
+
+# Stage 1: Build Environment
 FROM node:20-alpine AS build
 
 WORKDIR /app
@@ -8,6 +15,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Stage 2: Production Web Server
 FROM nginx:alpine
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80

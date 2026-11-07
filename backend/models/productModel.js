@@ -40,7 +40,12 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Database indexes for fast querying, filtering and full-text search
+// ============================================================================
+// DATABASE INDEXING (Query Performance Optimization)
+// 1. Compound Index { category: 1, price: 1 }: Fast category-filtered price sorting.
+// 2. Sorting Index { createdAt: -1 }: Fast "newest arrivals" catalog sorting.
+// 3. Text Index { name: "text", description: "text" }: Tokenized full-text search.
+// ============================================================================
 productSchema.index({ category: 1, price: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ name: "text", description: "text" });
