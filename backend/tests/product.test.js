@@ -63,4 +63,25 @@ describe("Product API", () => {
     const res = await request(app).get("/api/v1/product/get-product/nothing-here");
     assert.equal(res.status, 404);
   });
+
+  it("invalidates the catalog cache when an admin deletes a product", async () => {
+    const product = await createProduct({ name: "Cached Item", price: 200 });
+    const { token: adminToken } = await createUser({ role: 1, email: "admin-cache@test.com" });
+
+    // Populate the cache
+    const initial = await request(app).get("/api/v1/product/product-list");
+    assert.equal(initial.status, 200);
+    assert.equal(initial.body.total, 1);
+
+    // Delete the product as admin
+    const del = await request(app)
+      .delete(`/api/v1/product/delete-product/${product._id}`)
+      .set("Authorization", adminToken);
+    assert.equal(del.status, 200);
+
+    // Immediate subsequent list must reflect deletion (cache was purged)
+    const after = await request(app).get("/api/v1/product/product-list");
+    assert.equal(after.status, 200);
+    assert.equal(after.body.total, 0);
+  });
 });

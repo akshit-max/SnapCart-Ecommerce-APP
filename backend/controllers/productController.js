@@ -87,6 +87,7 @@ export const updateProductController = async (req, res) => {
 export const deleteProductController = async (req, res) => {
   try {
     await productModel.findByIdAndDelete(req.params.pid);
+    await clearCachePattern("product");
     res.status(200).send({ success: true, message: "Product deleted successfully" });
   } catch (error) {
     console.log(error);
@@ -187,19 +188,36 @@ export const productListController = async (req, res) => {
 // escape user input before using it in a regex
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-//search product
+//search product: tries indexed text search first, falls back to regex for partial words
 export const searchProductController = async (req, res) => {
   try {
-    const keyword = escapeRegex(req.params.keyword.slice(0, 50));
-    const products = await productModel
-      .find({
-        $or: [
-          { name: { $regex: keyword, $options: "i" } },
-          { description: { $regex: keyword, $options: "i" } },
-        ],
-      })
-      .select("-photo")
-      .limit(30);
+    const raw = req.params.keyword?.slice(0, 50) || "";
+    let products = [];
+
+    // try mongo text index first (faster for full words)
+    try {
+      products = await productModel
+        .find({ $text: { $search: raw } })
+        .select("-photo")
+        .limit(30);
+    } catch {
+      // index missing in test env or special characters: fall through to regex
+    }
+
+    // fallback to regex for partial words or when text index yields no match
+    if (products.length === 0) {
+      const keyword = escapeRegex(raw);
+      products = await productModel
+        .find({
+          $or: [
+            { name: { $regex: keyword, $options: "i" } },
+            { description: { $regex: keyword, $options: "i" } },
+          ],
+        })
+        .select("-photo")
+        .limit(30);
+    }
+
     res.status(200).send({ success: true, products });
   } catch (error) {
     console.log(error);

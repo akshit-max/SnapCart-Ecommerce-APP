@@ -20,7 +20,7 @@ const orderSchema = new mongoose.Schema(
     },
     payment: {
       method: { type: String, enum: ["Razorpay", "COD"] },
-      status: { type: String, enum: ["Paid", "Pending", "Refunded"] },
+      status: { type: String, enum: ["Paid", "Pending", "Refunded", "Expired"] },
       razorpayOrderId: String,
       razorpayPaymentId: String,
     },
@@ -34,6 +34,16 @@ const orderSchema = new mongoose.Schema(
       default: "Not Processed",
       enum: ORDER_STATUS,
     },
+    // timestamp lock to prevent concurrent cancellation races
+    cancellingAt: {
+      type: Date,
+      default: null,
+    },
+    // ensures inventory is restored to shelves exactly once
+    stockRestored: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
@@ -41,7 +51,7 @@ const orderSchema = new mongoose.Schema(
 // ============================================================================
 // DATABASE INDEXING (Query Performance Optimization)
 // 1. Compound Index { buyer: 1, createdAt: -1 }: O(log N) lookup of customer order history.
-// 2. Status Index { "payment.status": 1, createdAt: 1 }: O(1) retrieval for the 15-min sweeper.
+// 2. Status Index { "payment.status": 1, createdAt: 1 }: B-tree range scan (O(log N)) for the 15-min sweeper.
 // ============================================================================
 orderSchema.index({ buyer: 1, createdAt: -1 });
 orderSchema.index({ "payment.status": 1, createdAt: 1 });

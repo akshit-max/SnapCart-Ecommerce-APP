@@ -152,7 +152,9 @@ describe("Order API", () => {
     assert.equal(await stockOf(product._id), 5);
 
     const found = await orderModel.findById(order._id);
-    assert.equal(found, null);
+    assert.ok(found);
+    assert.equal(found.status, "Cancelled");
+    assert.equal(found.payment.status, "Expired");
   });
 
   // System Design Test 2: Server-to-server webhook payment reconciliation
@@ -210,5 +212,151 @@ describe("Order API", () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.equal(typeof res.body.circuit.closed, "boolean");
+  });
+
+  // Regression Test 1: Concurrency protection on order cancellation (prevents double stock restore)
+  it("prevents double stock restoration when two cancel requests arrive concurrently", async () => {
+    const product = await createProduct({ quantity: 5 });
+    const { body } = await request(app)
+      .post("/api/v1/order/cod")
+      .set("Authorization", token)
+      .send({ cart: [{ _id: product._id, qty: 2 }] });
+
+    assert.equal(await stockOf(product._id), 3);
+
+    // Fire two cancel requests simultaneously
+    const [res1, res2] = await Promise.all([
+      request(app).put(`/api/v1/order/cancel/${body.order._id}`).set("Authorization", token),
+      request(app).put(`/api/v1/order/cancel/${body.order._id}`).set("Authorization", token),
+    ]);
+
+    // Exactly one succeeds with 200, the other is rejected with 409 or 400
+    const hasOneSuccess =
+      (res1.status === 200 && (res2.status === 400 || res2.status === 409)) ||
+      (res2.status === 200 && (res1.status === 400 || res1.status === 409));
+    assert.ok(hasOneSuccess, `Expected one 200 and one 400/409, got ${res1.status} and ${res2.status}`);
+
+    // Stock must be restored exactly once (3 + 2 = 5), NEVER doubled to 7
+    assert.equal(await stockOf(product._id), 5);
+  });
+
+  // Regression Test 2: Duplicate cart items consolidated before reserving stock
+  it("consolidates duplicate product entries in the cart into a single stock decrement", async () => {
+    const product = await createProduct({ price: 500, quantity: 10 });
+
+    const res = await request(app)
+      .post("/api/v1/order/cod")
+      .set("Authorization", token)
+      .send({
+        cart: [
+          { _id: product._id, qty: 2 },
+          { _id: product._id, qty: 3 },
+        ],
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.order.total, 2500); // (2 + 3) * 500
+    assert.equal(res.body.order.items.length, 1); // merged into 1 line item
+    assert.equal(res.body.order.items[0].qty, 5);
+    assert.equal(await stockOf(product._id), 5); // 10 - 5 = 5
+  });
+
+  // Regression Test 3: Webhook Idempotency (duplicate delivery handling)
+  it("handles duplicate webhook delivery idempotently without errors", async () => {
+    const product = await createProduct();
+    const { user } = await createUser({ email: "idempotent-buyer@test.com" });
+
+    await orderModel.create({
+      items: [{ product: product._id, name: product.name, price: 1000, qty: 1 }],
+      total: 1000,
+      buyer: user._id,
+      payment: { method: "Razorpay", status: "Paid", razorpayOrderId: "order_dup123" },
+    });
+
+    const payload = JSON.stringify({
+      event: "order.paid",
+      payload: {
+        payment: { entity: { id: "pay_dup456", order_id: "order_dup123" } },
+      },
+    });
+
+    const signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(payload)
+      .digest("hex");
+
+    const res = await request(app)
+      .post("/api/v1/order/webhook")
+      .set("x-razorpay-signature", signature)
+      .set("Content-Type", "application/json")
+      .send(payload);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.status, "ok");
+  });
+
+  // Regression Test 4: Concurrency protection on checkout (atomic $inc with $gte prevents overselling)
+  it("prevents overselling when two users concurrently purchase the last available item", async () => {
+    const product = await createProduct({ name: "Limited Edition", quantity: 1, price: 1000 });
+    const { token: user1Token } = await createUser({ email: "buyer1@test.com" });
+    const { token: user2Token } = await createUser({ email: "buyer2@test.com" });
+
+    // Both users fire checkout for qty 1 at the exact same millisecond
+    const [res1, res2] = await Promise.all([
+      request(app)
+        .post("/api/v1/order/cod")
+        .set("Authorization", user1Token)
+        .send({ cart: [{ _id: product._id, qty: 1 }] }),
+      request(app)
+        .post("/api/v1/order/cod")
+        .set("Authorization", user2Token)
+        .send({ cart: [{ _id: product._id, qty: 1 }] }),
+    ]);
+
+    // Exactly one user gets 201 Created, the other gets 400 Bad Request (insufficient stock)
+    const hasOneSuccess =
+      (res1.status === 201 && res2.status === 400) ||
+      (res2.status === 201 && res1.status === 400);
+    assert.ok(hasOneSuccess, `Expected one 201 and one 400, got ${res1.status} and ${res2.status}`);
+
+    // Remaining stock must be exactly 0, NEVER -1
+    assert.equal(await stockOf(product._id), 0);
+  });
+
+  // Regression Test 5: Late payment webhook on already-refunded expired order
+  it("safely handles duplicate late-payment webhook for expired order without double refund", async () => {
+    const product = await createProduct();
+    const { user } = await createUser({ email: "late-buyer@test.com" });
+
+    // Order was expired and refunded previously
+    await orderModel.create({
+      items: [{ product: product._id, name: product.name, price: 1000, qty: 1 }],
+      total: 1000,
+      buyer: user._id,
+      status: "Cancelled",
+      payment: { method: "Razorpay", status: "Refunded", razorpayOrderId: "order_late123" },
+      stockRestored: true,
+    });
+
+    const payload = JSON.stringify({
+      event: "order.paid",
+      payload: {
+        payment: { entity: { id: "pay_late456", order_id: "order_late123" } },
+      },
+    });
+
+    const signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(payload)
+      .digest("hex");
+
+    const res = await request(app)
+      .post("/api/v1/order/webhook")
+      .set("x-razorpay-signature", signature)
+      .set("Content-Type", "application/json")
+      .send(payload);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.message, "Already refunded");
   });
 });

@@ -20,7 +20,15 @@ const isProd = process.env.NODE_ENV === "production";
 // CSP is off because the client loads bootstrap, fonts and razorpay from CDNs
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: isProd ? process.env.CLIENT_URL : true }));
-app.use(express.json({ limit: "1mb" }));
+// capture raw body for cryptographic webhook signature verification
+app.use(
+  express.json({
+    limit: "1mb",
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 if (!isProd && process.env.NODE_ENV !== "test") app.use(morgan("dev"));
 
 // limit login / register / reset attempts and contact form spam

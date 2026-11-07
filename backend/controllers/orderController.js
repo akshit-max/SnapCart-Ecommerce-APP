@@ -76,24 +76,32 @@ const reserveStock = async (cart) => {
     throw badRequest("Cart is empty");
   }
 
+  // merge duplicate product entries from the client to check stock accurately
+  const qtyMap = new Map();
+  for (const item of cart) {
+    if (!item?._id || !Number.isInteger(item.qty) || item.qty < 1) {
+      throw badRequest("Invalid quantity");
+    }
+    const id = String(item._id);
+    qtyMap.set(id, (qtyMap.get(id) || 0) + item.qty);
+  }
+
   const items = [];
   let total = 0;
 
   try {
-    for (const { _id, qty } of cart) {
-      if (!Number.isInteger(qty) || qty < 1) throw badRequest("Invalid quantity");
-
+    for (const [productId, qty] of qtyMap) {
       // only decrements if enough stock is left, so two buyers can't buy the last item
       const product = await productModel
         .findOneAndUpdate(
-          { _id, quantity: { $gte: qty } },
+          { _id: productId, quantity: { $gte: qty } },
           { $inc: { quantity: -qty } },
           { new: true }
         )
         .select("name price");
 
       if (!product) {
-        const exists = await productModel.findById(_id).select("name");
+        const exists = await productModel.findById(productId).select("name");
         throw badRequest(
           exists ? `Only limited stock left for ${exists.name}` : "A product in your cart no longer exists"
         );
@@ -212,7 +220,7 @@ export const cancelRazorpayOrderController = async (req, res) => {
       "payment.method": "Razorpay",
       "payment.status": "Pending",
     });
-    if (order) await restoreStock(order.items);
+    if (order && !order.stockRestored) await restoreStock(order.items);
     res.status(200).send({ success: true });
   } catch (error) {
     sendError(res, error, "Could not cancel order");
@@ -224,7 +232,8 @@ export const cancelRazorpayOrderController = async (req, res) => {
 // Problem: If a buyer begins online payment but closes the tab or loses internet,
 //          the reserved stock remains decremented in a "Pending" order forever.
 // Solution: Periodic background sweeper detects orders older than 15 minutes that
-//          are still "Pending", returns reserved inventory, and deletes the dead order.
+//          are still "Pending", returns reserved inventory, and marks the order Expired.
+//          We preserve the document for financial auditing and late payment handling.
 // ============================================================================
 export const cleanupExpiredPendingOrders = async (maxAgeMinutes = 15) => {
   try {
@@ -232,12 +241,18 @@ export const cleanupExpiredPendingOrders = async (maxAgeMinutes = 15) => {
     const expiredOrders = await orderModel.find({
       "payment.method": "Razorpay",
       "payment.status": "Pending",
+      status: { $ne: "Cancelled" },
       createdAt: { $lte: cutoff },
     });
 
     for (const order of expiredOrders) {
-      await restoreStock(order.items);
-      await orderModel.findByIdAndDelete(order._id);
+      if (!order.stockRestored) {
+        await restoreStock(order.items);
+        order.stockRestored = true;
+      }
+      order.status = "Cancelled";
+      order.payment.status = "Expired";
+      await order.save();
     }
     return expiredOrders.length;
   } catch (error) {
@@ -251,8 +266,8 @@ export const cleanupExpiredPendingOrders = async (maxAgeMinutes = 15) => {
 // Problem: Client-side payment callbacks fail if user closes browser, loses mobile
 //          network, or battery dies right after entering their UPI PIN.
 // Solution: Razorpay sends an asynchronous server-to-server POST event.
-//          We verify its HMAC-SHA256 signature using timingSafeEqual to prevent
-//          timing attacks, then update the order to "Paid" or restore stock if failed.
+//          We verify its HMAC-SHA256 signature using the raw payload buffer to prevent
+//          JSON re-serialization key-order mismatches, then update or refund safely.
 // ============================================================================
 export const razorpayWebhookController = async (req, res) => {
   try {
@@ -263,10 +278,11 @@ export const razorpayWebhookController = async (req, res) => {
       return res.status(400).send({ success: false, message: "Missing webhook secret or signature" });
     }
 
-    const bodyString = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    // Verify against the raw buffer captured by express.json verify hook
+    const rawPayload = req.rawBody || (typeof req.body === "string" ? req.body : JSON.stringify(req.body));
     const expected = crypto
       .createHmac("sha256", secret)
-      .update(bodyString)
+      .update(rawPayload)
       .digest("hex");
 
     const isValid =
@@ -284,15 +300,51 @@ export const razorpayWebhookController = async (req, res) => {
 
     if (razorpayOrderId) {
       const order = await orderModel.findOne({ "payment.razorpayOrderId": razorpayOrderId });
-      if (order && order.payment.status === "Pending") {
-        if (event.event === "order.paid" || event.event === "payment.captured") {
-          order.payment.status = "Paid";
-          order.payment.razorpayPaymentId = paymentEntity.id;
-          await order.save();
-        } else if (event.event === "payment.failed") {
-          await restoreStock(order.items);
-          order.status = "Cancelled";
-          await order.save();
+      if (order) {
+        // Idempotency: Ignore duplicate webhook deliveries if already marked paid
+        if (order.payment.status === "Paid") {
+          return res.status(200).send({ status: "ok", message: "Already processed" });
+        }
+
+        // Late payment arriving after order was expired by the background sweeper
+        if (order.payment.status === "Expired" || order.status === "Cancelled") {
+          if (event.event === "order.paid" || event.event === "payment.captured") {
+            // Guard: If already refunded, do not attempt second refund
+            if (order.payment.status === "Refunded") {
+              return res.status(200).send({ status: "ok", message: "Already refunded" });
+            }
+            try {
+              await getRazorpay().payments.refund(paymentEntity.id);
+              order.payment.status = "Refunded";
+              order.payment.razorpayPaymentId = paymentEntity.id;
+              await order.save();
+            } catch (refundErr) {
+              const msg = refundErr?.error?.description || refundErr?.message || "";
+              if (msg.toLowerCase().includes("already") && msg.toLowerCase().includes("refund")) {
+                order.payment.status = "Refunded";
+                await order.save();
+                return res.status(200).send({ status: "ok", message: "Already refunded on gateway" });
+              }
+              console.error("Failed to auto-refund expired late payment:", refundErr);
+              return res.status(500).send({ success: false, message: "Refund processing failed, will retry" });
+            }
+          }
+          return res.status(200).send({ status: "ok", message: "Late payment handled" });
+        }
+
+        if (order.payment.status === "Pending") {
+          if (event.event === "order.paid" || event.event === "payment.captured") {
+            order.payment.status = "Paid";
+            order.payment.razorpayPaymentId = paymentEntity.id;
+            await order.save();
+          } else if (event.event === "payment.failed") {
+            if (!order.stockRestored) {
+              await restoreStock(order.items);
+              order.stockRestored = true;
+            }
+            order.status = "Cancelled";
+            await order.save();
+          }
         }
       }
     }
@@ -316,27 +368,65 @@ export const getOrdersController = async (req, res) => {
 };
 
 // used by both user and admin cancel: refunds online payments and puts items back in stock.
-// refund happens first, so if it fails the order stays as it was
-const cancelOrder = async (order) => {
-  if (order.payment.method === "Razorpay" && order.payment.status === "Paid") {
-    await getRazorpay().payments.refund(order.payment.razorpayPaymentId);
-    order.payment.status = "Refunded";
+// if refund fails, the lock is cleared so the order stays uncancelled and can be safely retried
+const processOrderCancellation = async (order) => {
+  try {
+    if (order.payment.method === "Razorpay" && order.payment.status === "Paid") {
+      try {
+        await getRazorpay().payments.refund(order.payment.razorpayPaymentId);
+        order.payment.status = "Refunded";
+      } catch (refundErr) {
+        // If gateway confirms payment was already refunded earlier, accept it and proceed
+        const msg = refundErr?.error?.description || refundErr?.message || "";
+        if (msg.toLowerCase().includes("already") && msg.toLowerCase().includes("refund")) {
+          order.payment.status = "Refunded";
+        } else {
+          throw refundErr;
+        }
+      }
+    }
+    order.status = "Cancelled";
+    order.cancellingAt = null;
+    if (!order.stockRestored) {
+      await restoreStock(order.items);
+      order.stockRestored = true;
+    }
+    await order.save();
+    return order;
+  } catch (error) {
+    // release lock so customer or admin can retry without being locked out
+    await orderModel.updateOne({ _id: order._id }, { $set: { cancellingAt: null } });
+    throw error;
   }
-  order.status = "Cancelled";
-  await order.save();
-  await restoreStock(order.items);
 };
 
-//user can cancel an order until the admin starts processing it
+// user can cancel an order until the admin starts processing it
 export const cancelOrderController = async (req, res) => {
   try {
-    const order = await orderModel.findOne({ _id: req.params.orderId, buyer: req.user._id });
-    if (!order) return res.status(404).send({ success: false, message: "Order not found" });
-    if (order.status !== "Not Processed") {
-      return res.status(400).send({ success: false, message: "This order can no longer be cancelled" });
+    const lockCutoff = new Date(Date.now() - 60 * 1000); // 1-minute lock timeout
+
+    // atomically claim cancellation to prevent two concurrent requests from double-restoring stock
+    const order = await orderModel.findOneAndUpdate(
+      {
+        _id: req.params.orderId,
+        buyer: req.user._id,
+        status: "Not Processed",
+        $or: [{ cancellingAt: null }, { cancellingAt: { $lt: lockCutoff } }],
+      },
+      { $set: { cancellingAt: new Date() } },
+      { new: true }
+    );
+
+    if (!order) {
+      const existing = await orderModel.findOne({ _id: req.params.orderId, buyer: req.user._id });
+      if (!existing) return res.status(404).send({ success: false, message: "Order not found" });
+      if (existing.status !== "Not Processed") {
+        return res.status(400).send({ success: false, message: "This order can no longer be cancelled" });
+      }
+      return res.status(409).send({ success: false, message: "Cancellation already in progress" });
     }
 
-    await cancelOrder(order);
+    await processOrderCancellation(order);
     res.status(200).send({ success: true, message: "Order cancelled", order });
   } catch (error) {
     console.log(error);
@@ -366,6 +456,31 @@ export const orderStatusController = async (req, res) => {
       return res.status(400).send({ success: false, message: "Invalid status" });
     }
 
+    if (status === "Cancelled") {
+      const lockCutoff = new Date(Date.now() - 60 * 1000);
+      const order = await orderModel.findOneAndUpdate(
+        {
+          _id: req.params.orderId,
+          status: { $ne: "Cancelled" },
+          $or: [{ cancellingAt: null }, { cancellingAt: { $lt: lockCutoff } }],
+        },
+        { $set: { cancellingAt: new Date() } },
+        { new: true }
+      );
+
+      if (!order) {
+        const existing = await orderModel.findById(req.params.orderId);
+        if (!existing) return res.status(404).send({ success: false, message: "Order not found" });
+        if (existing.status === "Cancelled") {
+          return res.status(400).send({ success: false, message: "Cancelled orders can't be changed" });
+        }
+        return res.status(409).send({ success: false, message: "Cancellation already in progress" });
+      }
+
+      await processOrderCancellation(order);
+      return res.status(200).send({ success: true, message: "Order status updated", order });
+    }
+
     const order = await orderModel.findById(req.params.orderId);
     if (!order) return res.status(404).send({ success: false, message: "Order not found" });
 
@@ -373,12 +488,8 @@ export const orderStatusController = async (req, res) => {
       return res.status(400).send({ success: false, message: "Cancelled orders can't be changed" });
     }
 
-    if (status === "Cancelled") {
-      await cancelOrder(order);
-    } else {
-      order.status = status;
-      await order.save();
-    }
+    order.status = status;
+    await order.save();
 
     res.status(200).send({ success: true, message: "Order status updated", order });
   } catch (error) {

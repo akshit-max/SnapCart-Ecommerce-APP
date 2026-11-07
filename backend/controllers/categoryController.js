@@ -1,6 +1,7 @@
 import categoryModel from "../models/categoryModel.js";
 import productModel from "../models/productModel.js";
 import slugify from "slugify";
+import { clearCachePattern } from "../helpers/cacheHelper.js";
 
 const toSlug = (name) => slugify(name, { lower: true, strict: true });
 
@@ -16,6 +17,7 @@ export const createCategoryController = async (req, res) => {
     }
 
     const category = await new categoryModel({ name, slug: toSlug(name) }).save();
+    await clearCachePattern("product");
     res.status(201).send({ success: true, message: "New category created", category });
   } catch (error) {
     console.log(error);
@@ -40,6 +42,7 @@ export const updateCategoryController = async (req, res) => {
       { name, slug: toSlug(name) },
       { new: true }
     );
+    await clearCachePattern("product");
     res.status(200).send({ success: true, message: "Category updated successfully", category });
   } catch (error) {
     console.log(error);
@@ -84,6 +87,7 @@ export const deleteCategoryController = async (req, res) => {
     }
 
     await categoryModel.findByIdAndDelete(id);
+    await clearCachePattern("product");
     res.status(200).send({ success: true, message: "Category deleted successfully" });
   } catch (error) {
     console.log(error);
