@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
@@ -28,6 +29,16 @@ app.use("/api/v1/auth/login", strictLimiter);
 app.use("/api/v1/auth/register", strictLimiter);
 app.use("/api/v1/auth/forgot-password", strictLimiter);
 app.use("/api/v1/contact", strictLimiter);
+
+// system health check endpoint
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).send({
+    status: "ok",
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+  });
+});
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/category", categoryRoutes);

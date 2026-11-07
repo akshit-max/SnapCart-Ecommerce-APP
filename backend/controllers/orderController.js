@@ -179,6 +179,80 @@ export const cancelRazorpayOrderController = async (req, res) => {
   }
 };
 
+// Sweeps abandoned pending checkout sessions older than maxAgeMinutes
+// Restores inventory so abandoned carts never permanently lock stock
+export const cleanupExpiredPendingOrders = async (maxAgeMinutes = 15) => {
+  try {
+    const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+    const expiredOrders = await orderModel.find({
+      "payment.method": "Razorpay",
+      "payment.status": "Pending",
+      createdAt: { $lte: cutoff },
+    });
+
+    for (const order of expiredOrders) {
+      await restoreStock(order.items);
+      await orderModel.findByIdAndDelete(order._id);
+    }
+    return expiredOrders.length;
+  } catch (error) {
+    console.error("Error running pending order cleanup:", error);
+    return 0;
+  }
+};
+
+// Razorpay Server-to-Server Webhook handler
+// Reconciles payments asynchronously if buyer disconnects or closes tab right after paying
+export const razorpayWebhookController = async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+    const signature = req.headers["x-razorpay-signature"];
+
+    if (!secret || !signature) {
+      return res.status(400).send({ success: false, message: "Missing webhook secret or signature" });
+    }
+
+    const bodyString = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(bodyString)
+      .digest("hex");
+
+    const isValid =
+      typeof signature === "string" &&
+      expected.length === signature.length &&
+      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+
+    if (!isValid) {
+      return res.status(400).send({ success: false, message: "Invalid webhook signature" });
+    }
+
+    const event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const paymentEntity = event.payload?.payment?.entity;
+    const razorpayOrderId = paymentEntity?.order_id;
+
+    if (razorpayOrderId) {
+      const order = await orderModel.findOne({ "payment.razorpayOrderId": razorpayOrderId });
+      if (order && order.payment.status === "Pending") {
+        if (event.event === "order.paid" || event.event === "payment.captured") {
+          order.payment.status = "Paid";
+          order.payment.razorpayPaymentId = paymentEntity.id;
+          await order.save();
+        } else if (event.event === "payment.failed") {
+          await restoreStock(order.items);
+          order.status = "Cancelled";
+          await order.save();
+        }
+      }
+    }
+
+    res.status(200).send({ status: "ok" });
+  } catch (error) {
+    console.error("Error in webhook handler:", error);
+    res.status(500).send({ success: false, message: "Webhook error" });
+  }
+};
+
 //orders of logged in user
 export const getOrdersController = async (req, res) => {
   try {

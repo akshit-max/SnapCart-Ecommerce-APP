@@ -40,4 +40,9 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Database indexes for fast querying, filtering and full-text search
+productSchema.index({ category: 1, price: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ name: "text", description: "text" });
+
 export default mongoose.model("Product", productSchema);

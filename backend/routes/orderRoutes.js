@@ -8,6 +8,7 @@ import {
   getOrdersController,
   orderStatsController,
   orderStatusController,
+  razorpayWebhookController,
   verifyRazorpayPaymentController,
 } from "../controllers/orderController.js";
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
@@ -15,6 +16,7 @@ import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 //checkout
+router.post("/webhook", razorpayWebhookController);
 router.post("/cod", requireSignIn, codOrderController);
 router.post("/razorpay/create", requireSignIn, createRazorpayOrderController);
 router.post("/razorpay/verify", requireSignIn, verifyRazorpayPaymentController);

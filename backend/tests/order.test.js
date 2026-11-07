@@ -6,6 +6,7 @@ import { connectTestDb, closeTestDb, clearTestDb, createUser, createProduct } fr
 import app from "../app.js";
 import productModel from "../models/productModel.js";
 import orderModel from "../models/orderModel.js";
+import { cleanupExpiredPendingOrders } from "../controllers/orderController.js";
 
 const stockOf = async (id) => (await productModel.findById(id)).quantity;
 
@@ -130,5 +131,73 @@ describe("Order API", () => {
       .set("Authorization", adminToken)
       .send({ status: "Teleported" });
     assert.equal(invalid.status, 400);
+  });
+
+  it("cleans up abandoned pending orders and restores reserved stock", async () => {
+    const product = await createProduct({ quantity: 5 });
+    await productModel.updateOne({ _id: product._id }, { $inc: { quantity: -2 } });
+    assert.equal(await stockOf(product._id), 3);
+
+    const abandonedTime = new Date(Date.now() - 20 * 60 * 1000);
+    const order = await orderModel.create({
+      items: [{ product: product._id, name: product.name, price: product.price, qty: 2 }],
+      total: product.price * 2,
+      payment: { method: "Razorpay", status: "Pending", razorpayOrderId: "order_abandoned123" },
+      createdAt: abandonedTime,
+    });
+
+    const cleanedCount = await cleanupExpiredPendingOrders(15);
+    assert.equal(cleanedCount, 1);
+    assert.equal(await stockOf(product._id), 5);
+
+    const found = await orderModel.findById(order._id);
+    assert.equal(found, null);
+  });
+
+  it("processes razorpay webhook event and marks order paid", async () => {
+    const product = await createProduct();
+    const { user } = await createUser({ email: "webhook-buyer@test.com" });
+
+    const order = await orderModel.create({
+      items: [{ product: product._id, name: product.name, price: 1000, qty: 1 }],
+      total: 1000,
+      buyer: user._id,
+      payment: { method: "Razorpay", status: "Pending", razorpayOrderId: "order_webhook123" },
+    });
+
+    const payload = JSON.stringify({
+      event: "order.paid",
+      payload: {
+        payment: {
+          entity: {
+            id: "pay_webhook456",
+            order_id: "order_webhook123",
+          },
+        },
+      },
+    });
+
+    const signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(payload)
+      .digest("hex");
+
+    const res = await request(app)
+      .post("/api/v1/order/webhook")
+      .set("x-razorpay-signature", signature)
+      .set("Content-Type", "application/json")
+      .send(payload);
+
+    assert.equal(res.status, 200);
+    const updated = await orderModel.findById(order._id);
+    assert.equal(updated.payment.status, "Paid");
+    assert.equal(updated.payment.razorpayPaymentId, "pay_webhook456");
+  });
+
+  it("checks system health status endpoint", async () => {
+    const res = await request(app).get("/api/v1/health");
+    assert.equal(res.status, 200);
+    assert.equal(res.body.status, "ok");
+    assert.equal(res.body.database, "connected");
   });
 });

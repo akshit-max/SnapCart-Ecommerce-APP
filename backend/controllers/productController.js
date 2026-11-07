@@ -2,6 +2,7 @@ import productModel from "../models/productModel.js";
 import categoryModel from "../models/categoryModel.js";
 import fs from "fs";
 import slugify from "slugify";
+import { getCache, setCache, clearCachePattern } from "../helpers/cacheHelper.js";
 
 const MAX_PHOTO_SIZE = 1024 * 1024; // 1mb
 
@@ -44,6 +45,7 @@ export const createProductController = async (req, res) => {
       product.photo.contentType = photo.type;
     }
     await product.save();
+    await clearCachePattern("product");
 
     res.status(201).send({ success: true, message: "Product created successfully" });
   } catch (error) {
@@ -151,6 +153,10 @@ export const productListController = async (req, res) => {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const { categories, min, max, sort } = req.query;
 
+    const cacheKey = `products:list:${page}:${categories || "all"}:${min || "0"}:${max || "0"}:${sort || "newest"}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).send({ success: true, ...cached, fromCache: true });
+
     const filter = {};
     if (categories) filter.category = { $in: categories.split(",") };
     if (min || max) {
@@ -168,6 +174,8 @@ export const productListController = async (req, res) => {
         .limit(perPage),
       productModel.countDocuments(filter),
     ]);
+
+    await setCache(cacheKey, { products, total }, 300);
 
     res.status(200).send({ success: true, products, total });
   } catch (error) {

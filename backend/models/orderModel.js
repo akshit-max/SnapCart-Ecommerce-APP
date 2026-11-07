@@ -38,4 +38,8 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes for order history queries and abandoned pending order cleanups
+orderSchema.index({ buyer: 1, createdAt: -1 });
+orderSchema.index({ "payment.status": 1, createdAt: 1 });
+
 export default mongoose.model("Order", orderSchema);
