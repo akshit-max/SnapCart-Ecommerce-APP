@@ -6,7 +6,7 @@ const CartContext = createContext();
 const loadCart = () => {
   try {
     const saved = JSON.parse(localStorage.getItem("cart")) || [];
-    // older carts stored the same product twice instead of a qty, merge them
+    // merge items with same id if any duplicates exist
     return saved.reduce((cart, item) => {
       const found = cart.find((c) => c._id === item._id);
       if (found) found.qty += item.qty || 1;
@@ -25,23 +25,33 @@ const CartProvider = ({ children }) => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (product) => {
+  // Single authority for adding to cart with duplicate-safe notification
+  const addToCart = (product, count = 1, showToast = true) => {
     const inCart = cart.find((item) => item._id === product._id);
     const qtyInCart = inCart ? inCart.qty : 0;
 
-    if (qtyInCart >= product.quantity) {
-      toast.error(product.quantity < 1 ? "Out of stock" : "No more stock available");
-      return;
+    if (qtyInCart + count > product.quantity) {
+      toast.error(product.quantity < 1 ? "Out of stock" : "Maximum available stock reached in cart", {
+        id: `stock-${product._id}`,
+      });
+      return false;
     }
 
     if (inCart) {
-      setCart(cart.map((item) => (item._id === product._id ? { ...item, qty: item.qty + 1 } : item)));
+      setCart(cart.map((item) => (item._id === product._id ? { ...item, qty: item.qty + count } : item)));
     } else {
-      // only keep what the cart page needs
       const { _id, name, slug, price, quantity } = product;
-      setCart([...cart, { _id, name, slug, price, stock: quantity, qty: 1 }]);
+      setCart([...cart, { _id, name, slug, price, stock: quantity, qty: count }]);
     }
-    toast.success("Added to cart");
+
+    if (showToast) {
+      const message = count > 1 ? `${count} × ${product.name} added to bag` : `${product.name} added to bag`;
+      toast.success(message, {
+        id: `cart-${product._id}`,
+        icon: "🛍️",
+      });
+    }
+    return true;
   };
 
   const updateQty = (id, qty) => {

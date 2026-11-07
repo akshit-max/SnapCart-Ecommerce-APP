@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { FiTrash2, FiArrowLeft, FiExternalLink } from "react-icons/fi";
 import DashboardLayout from "../../components/Layout/DashboardLayout";
 import ProductForm from "../../components/Form/ProductForm";
+import ConfirmModal from "../../components/ConfirmModal";
 import Spinner from "../../components/Spinner";
 import { getErrorMessage } from "../../utils/helpers";
 
@@ -11,6 +13,7 @@ const UpdateProduct = () => {
   const navigate = useNavigate();
   const { slug } = useParams();
   const [product, setProduct] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     axios
@@ -25,18 +28,18 @@ const UpdateProduct = () => {
   const handleUpdate = async (formData) => {
     try {
       await axios.put(`/api/v1/product/update-product/${product._id}`, formData);
-      toast.success("Product updated");
+      toast.success("Product updated successfully");
       navigate("/dashboard/admin/products");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
+  const handleConfirmDelete = async () => {
     try {
       await axios.delete(`/api/v1/product/delete-product/${product._id}`);
-      toast.success("Product deleted");
+      toast.success("Product permanently deleted");
+      setShowDeleteModal(false);
       navigate("/dashboard/admin/products");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -44,19 +47,43 @@ const UpdateProduct = () => {
   };
 
   return (
-    <DashboardLayout title="Edit Product" admin>
-      <div className="card-box" style={{ maxWidth: 650 }}>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h4 className="page-title mb-0">Edit Product</h4>
-          {product && (
-            <button className="btn btn-sm btn-outline-danger" onClick={handleDelete}>
-              Delete
-            </button>
-          )}
+    <DashboardLayout title="Edit Product - SnapCart" admin>
+      <div className="card-box p-4" style={{ maxWidth: 700 }}>
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom">
+          <div>
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <h4 className="fw-bold text-dark mb-0">Edit Product</h4>
+              {product && (
+                <Link
+                  to={`/product/${product.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-sm btn-outline-custom p-1 px-2"
+                  title="View on Storefront"
+                >
+                  <FiExternalLink size={13} />
+                </Link>
+              )}
+            </div>
+            <p className="text-muted small mb-0">Modify specifications, pricing, imagery, or inventory.</p>
+          </div>
+
+          <div className="d-flex gap-2">
+            <Link to="/dashboard/admin/products" className="btn btn-outline-custom btn-sm">
+              <FiArrowLeft className="me-1" /> Inventory
+            </Link>
+            {product && (
+              <button className="btn btn-sm btn-outline-danger" onClick={() => setShowDeleteModal(true)}>
+                <FiTrash2 className="me-1" /> Delete
+              </button>
+            )}
+          </div>
         </div>
 
         {!product ? (
-          <Spinner />
+          <div className="py-5">
+            <Spinner />
+          </div>
         ) : (
           <ProductForm
             productId={product._id}
@@ -73,6 +100,18 @@ const UpdateProduct = () => {
           />
         )}
       </div>
+
+      {/* In-App Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete Product?"
+        message={`Are you sure you want to permanently delete "${product?.name}"? Its Cloudinary CDN image will be deleted and this product will no longer appear on the storefront.`}
+        confirmText="Permanently Delete"
+        cancelText="Keep Product"
+        confirmVariant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </DashboardLayout>
   );
 };

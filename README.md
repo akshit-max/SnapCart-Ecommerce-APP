@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/akshit-max/SnapCart-Ecommerce-APP/actions/workflows/ci.yml/badge.svg)](https://github.com/akshit-max/SnapCart-Ecommerce-APP/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
-![Tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-30%20passed-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 SnapCart is a full-stack e-commerce web application built on the MERN stack (MongoDB, Express 5, React 18, Node.js). It provides a complete online shopping workflow with customer ordering, Razorpay and Cash-on-Delivery payment handling, inventory reservation, order cancellation with automated refunds, and an administrative management dashboard.
@@ -49,9 +49,10 @@ SnapCart resolves these challenges within a clean, maintainable Modular Monolith
 ## Key Features
 
 ### Customer Experience
-- **Catalog & Discovery**: Multi-parameter catalog filtering (category multi-select, price range, sorting by price or arrival date) and server-side pagination (6 items per page).
+- **Catalog & Discovery**: Multi-parameter catalog filtering (10 curated luxury departments, price range, sorting by price or arrival date) and server-side pagination (6 items per page).
 - **Search**: Full-text tokenized search backed by MongoDB text indexes, with automatic regex fallback for partial-word matching.
-- **Cart Management**: Client-side cart state with quantity adjustments, persisted in `localStorage` across page reloads.
+- **Cart & Promo Codes**: Client-side cart state with quantity adjustments, persisted in `localStorage` across page reloads, with coupon support (`SNAPCART20`, `WELCOME10`).
+- **Interactive UI & In-App Modals**: Zero native browser alerts or popups; full in-app glassmorphic `ConfirmModal` dialogs, interactive hero carousels, and responsive visual department sliders.
 - **Checkout Flexibility**: Dual payment options—online payments via Razorpay (UPI, Credit/Debit cards, Netbanking) and Cash on Delivery (COD).
 - **Order Lifecycle & Self-Cancellation**: Order history tracking (`Not Processed` &rarr; `Processing` &rarr; `Shipped` &rarr; `Delivered`). Users can cancel unfulfilled orders, triggering automated payment refunds.
 - **User Profile**: Profile and delivery address management, along with security-question-based password reset.
@@ -87,6 +88,7 @@ SnapCart resolves these challenges within a clean, maintainable Modular Monolith
 | | express-rate-limit, helmet | Ingress rate limiting and HTTP security headers |
 | | Nodemailer | SMTP email transport for the contact form |
 | **Database** | MongoDB Atlas / Local MongoDB 7 | Primary document database |
+| **Media & CDN** | Cloudinary SDK | Cloud object storage, automatic WebP/AVIF format optimization, and edge CDN delivery |
 | **Caching** | Redis 7 / ioredis | Cache-aside catalog storage with in-memory Map fallback |
 | **Payments** | Razorpay Node SDK | Order generation, HMAC validation, and automated refunds |
 | **Testing** | Node.js Native Test Runner (`node:test`) | Fast, zero-dependency test runner |
@@ -176,6 +178,11 @@ flowchart TD
 - **Decision**: External calls to create Razorpay orders are wrapped in an Opossum circuit breaker (5-second timeout, 50% error threshold over a 10-second rolling window).
 - **Rationale**: If the external payment provider encounters latency or an outage, incoming checkout calls can hang and exhaust the Node.js event loop. The circuit breaker trips `OPEN`, fails fast, and instructs the user to complete checkout using Cash on Delivery. The live circuit status is exposed for monitoring at `GET /api/v1/order/circuit-status`.
 
+### 7. Cloud Object Storage & Edge CDN Asset Delivery
+- **Decision**: Product images are uploaded to Cloudinary with `quality: "auto", fetch_format: "auto"`, converting uploads to modern WebP/AVIF formats and offloading binary media to a global Content Delivery Network.
+- **Rationale**: Storing binary files in MongoDB is a known database anti-pattern that bloats WiredTiger RAM cache and forces Node.js to stream megabytes of binary data per page view.
+- **Zero-Breaking-Change Architecture**: The backend streaming endpoint (`GET /api/v1/product/product-photo/:pid`) issues an HTTP `302 Found` redirect to Cloudinary's edge CDN URL. If an older product document still stores a MongoDB binary buffer, it gracefully serves the buffer with appropriate caching headers. This maintains 100% backward compatibility with all React frontend components without touching client-side code.
+
 ---
 
 ## Checkout & Payment Workflow
@@ -238,13 +245,14 @@ SnapCart/
 │   │   └── productController.js        # Product CRUD, filters, pagination, search
 │   ├── helpers/
 │   │   ├── authHelper.js               # bcrypt hashing & public user sanitizer
-│   │   └── cacheHelper.js              # Redis cache-aside with in-memory fallback
+│   │   ├── cacheHelper.js              # Redis cache-aside with in-memory fallback
+│   │   └── cloudinaryHelper.js         # Cloudinary CDN upload & format optimizer
 │   ├── middlewares/
 │   │   └── authMiddleware.js           # requireSignIn (JWT) & isAdmin authorization
 │   ├── models/
 │   │   ├── categoryModel.js            # Category schema with unique slug index
 │   │   ├── orderModel.js               # Order schema with concurrency & status indexes
-│   │   ├── productModel.js             # Product schema with compound & text indexes
+│   │   ├── productModel.js             # Product schema with CDN URLs & compound indexes
 │   │   └── userModel.js                # User schema with hashed credentials
 │   ├── routes/
 │   │   ├── authRoutes.js
@@ -252,11 +260,14 @@ SnapCart/
 │   │   ├── contactRoutes.js
 │   │   ├── orderRoutes.js
 │   │   └── productRoutes.js
+│   ├── scripts/
+│   │   ├── expandCatalog.js            # Catalog expansion seed script (Cloudinary + MongoDB Atlas)
+│   │   └── migrateImagesToCloudinary.js # Database migration: MongoDB buffers to Cloudinary CDN
 │   ├── tests/
 │   │   ├── auth.test.js                # Auth API test suite (6 tests)
 │   │   ├── category.test.js            # Category API test suite (3 tests)
 │   │   ├── order.test.js               # Orders, concurrency & webhook tests (14 tests)
-│   │   ├── product.test.js             # Catalog, search & cache tests (5 tests)
+│   │   ├── product.test.js             # Catalog, search, cache & CDN tests (7 tests)
 │   │   └── setup.js                    # In-memory MongoDB lifecycle harness
 │   ├── app.js                          # Express app configuration & middleware
 │   ├── Dockerfile                      # Backend Node.js 20 Alpine container definition
@@ -265,7 +276,7 @@ SnapCart/
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── components/                 # Reusable Layout, Forms, and Route Guards
+│   │   ├── components/                 # Modals (ConfirmModal), Banners, Visual Nav, Layouts, Forms
 │   │   ├── context/                    # Auth, Cart, and Search React Context providers
 │   │   ├── hooks/                      # Custom hooks (e.g., useCategory)
 │   │   ├── pages/                      # Customer and Admin view components
@@ -326,6 +337,11 @@ CLIENT_URL=http://localhost:3000
 RAZORPAY_KEY_ID=rzp_test_your_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_secret
 RAZORPAY_WEBHOOK_SECRET=your_optional_webhook_secret
+
+# Cloudinary Product Image CDN (Optional - falls back to MongoDB buffer if omitted)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
 # Redis Caching (Optional - falls back to in-memory store if omitted)
 REDIS_URL=redis://localhost:6379
@@ -403,14 +419,16 @@ npm test
   ✔ prevents overselling when two users concurrently purchase the last available item
   ✔ safely handles duplicate late-payment webhook for expired order without double refund
 
-▶ Product API (5 tests)
+▶ Product API (7 tests)
   ✔ filters by price, sorts and paginates the product list
   ✔ handles regex characters in search safely
   ✔ only lets admins delete products
   ✔ returns 404 for a product that doesn't exist
   ✔ invalidates the catalog cache when an admin deletes a product
+  ✔ redirects to Cloudinary CDN URL when product photo is hosted in cloud storage
+  ✔ serves legacy buffer photo with correct headers if stored directly in database
 
-ℹ tests 28 | suites 4 | pass 28 | fail 0 | cancelled 0 | duration_ms ~5100ms
+ℹ tests 30 | suites 4 | pass 30 | fail 0 | cancelled 0 | duration_ms ~5100ms
 ```
 
 ---
@@ -522,18 +540,20 @@ Base URL prefix: `/api/v1`. Protected routes require a valid JWT token in the `A
 
 ## Current Limitations
 
-- **Image Storage in MongoDB**: Product photos are currently stored as BSON buffers in MongoDB documents ($\le 1$ MB). While images are excluded from catalog queries (`.select("-photo")`) to maintain small payloads, high-scale production systems typically offload binary assets to dedicated object storage (AWS S3, Cloudinary).
-- **Single-Region Scheduling**: The 10-minute abandoned cart sweeper uses an in-process Node.js interval (`setInterval`). In multi-instance cluster deployments, an external scheduler or distributed cron would coordinate execution.
+- **Single-Node In-Process Sweeper**: The 10-minute abandoned cart sweeper uses an in-process Node.js interval (`setInterval`). In horizontally scaled multi-instance cluster deployments, a distributed queue or scheduler (e.g., BullMQ with Redis) would coordinate execution to prevent redundant sweep executions.
+- **Local Webhook Tunneling**: Razorpay server-to-server webhook delivery requires a publicly accessible HTTPS URL or tunnel (e.g., ngrok or Localtunnel) when testing live webhook events during local development.
 
 ---
 
 ## Future Improvements
 
-- Transition binary image storage from MongoDB BSON buffers to AWS S3 or Cloudinary.
-- Implement user reviews, star ratings, and discount coupon codes.
-- Add automated email notifications for order confirmation and dispatch events.
-- Implement refresh tokens stored in `httpOnly` secure cookies.
-- Add end-to-end integration tests using Playwright.
+- [x] **Cloudinary CDN Media Delivery**: Offloaded binary assets to cloud object storage with auto-WebP/AVIF compression.
+- [x] **Promotional Discount Engine**: Promo coupons (`SNAPCART20`, `WELCOME10`) with automatic price deductions.
+- [x] **In-App Glassmorphic Modals**: Fully eliminated native browser popups with reusable `ConfirmModal`.
+- [ ] User product reviews and verified buyer rating submissions.
+- [ ] Automated transactional emails via Nodemailer for order placement and dispatch tracking.
+- [ ] Refresh tokens stored in `httpOnly` secure cookies with sliding expiration.
+- [ ] Cross-browser end-to-end testing suite using Playwright.
 
 ---
 

@@ -84,4 +84,35 @@ describe("Product API", () => {
     assert.equal(after.status, 200);
     assert.equal(after.body.total, 0);
   });
+
+  it("redirects to Cloudinary CDN URL when product photo is hosted in cloud storage", async () => {
+    const cdnUrl = "https://res.cloudinary.com/qrkg4byu/image/upload/v12345/snapcart/products/sample.webp";
+    const product = await createProduct({
+      name: "Cloudinary Product",
+      photo: {
+        url: cdnUrl,
+        public_id: "snapcart/products/sample",
+      },
+    });
+
+    const res = await request(app).get(`/api/v1/product/product-photo/${product._id}`);
+    assert.equal(res.status, 302);
+    assert.equal(res.headers.location, cdnUrl);
+  });
+
+  it("serves legacy buffer photo with correct headers if stored directly in database", async () => {
+    const dummyBuffer = Buffer.from("fake-image-bytes");
+    const product = await createProduct({
+      name: "Legacy Product",
+      photo: {
+        data: dummyBuffer,
+        contentType: "image/jpeg",
+      },
+    });
+
+    const res = await request(app).get(`/api/v1/product/product-photo/${product._id}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["content-type"], "image/jpeg");
+    assert.equal(res.body.toString(), dummyBuffer.toString());
+  });
 });

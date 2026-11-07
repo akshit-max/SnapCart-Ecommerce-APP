@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { FiDollarSign, FiShoppingBag, FiBox, FiUsers, FiAlertTriangle, FiArrowRight } from "react-icons/fi";
 import DashboardLayout from "../../components/Layout/DashboardLayout";
 import Spinner from "../../components/Spinner";
 import { useAuth } from "../../context/auth";
@@ -19,44 +20,94 @@ const AdminDashboard = () => {
 
   const cards = data
     ? [
-        { label: "Revenue", value: formatPrice(data.stats.revenue) },
-        { label: "Orders", value: data.stats.orders },
-        { label: "Products", value: data.stats.products },
-        { label: "Users", value: data.stats.users },
+        { label: "Total Revenue", value: formatPrice(data.stats.revenue), icon: <FiDollarSign />, color: "text-success", bg: "bg-success-subtle" },
+        { label: "Total Orders", value: data.stats.orders, icon: <FiShoppingBag />, color: "text-primary", bg: "bg-primary-subtle" },
+        { label: "Active Products", value: data.stats.products, icon: <FiBox />, color: "text-warning", bg: "bg-warning-subtle" },
+        { label: "Registered Users", value: data.stats.users, icon: <FiUsers />, color: "text-info", bg: "bg-info-subtle" },
       ]
     : [];
 
   return (
-    <DashboardLayout title="Admin Dashboard" admin>
-      <h4 className="page-title">Welcome, {auth?.user?.name}</h4>
-      <p className="text-muted-soft">Here's how the store is doing.</p>
+    <DashboardLayout title="Admin Command Center - SnapCart" admin>
+      <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+        <div>
+          <h4 className="fw-bold text-dark mb-1">Welcome back, {auth?.user?.name}</h4>
+          <p className="text-muted small mb-0">Store performance summary, orders, and real-time inventory.</p>
+        </div>
+        <Link to="/dashboard/admin/create-product" className="btn btn-brand btn-sm">
+          + Add New Product
+        </Link>
+      </div>
 
       {!data ? (
-        <Spinner />
+        <div className="py-5">
+          <Spinner />
+        </div>
       ) : (
         <>
           <div className="row g-3 mb-4">
             {cards.map((card) => (
-              <div className="col-6 col-lg-3" key={card.label}>
-                <div className="card-box stat-card">
-                  <div className="small text-muted-soft">{card.label}</div>
-                  <div className="stat-value">{card.value}</div>
+              <div className="col-sm-6 col-xl-3" key={card.label}>
+                <div className="card-box p-3 h-100">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="small text-muted fw-bold">{card.label}</span>
+                    <div className={`p-2 rounded-3 ${card.bg} ${card.color} fs-5`}>
+                      {card.icon}
+                    </div>
+                  </div>
+                  <div className="fs-3 fw-extrabold text-dark">{card.value}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="card-box">
-            <h6 className="fw-semibold mb-3">Low stock (5 or less)</h6>
+          <div className="card-box p-4">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <FiAlertTriangle className="text-warning" /> Low Stock Alerts (5 or fewer units)
+              </h6>
+              <Link to="/dashboard/admin/products" className="small fw-semibold text-primary text-decoration-none">
+                Manage Stock <FiArrowRight />
+              </Link>
+            </div>
+
             {data.lowStock.length === 0 ? (
-              <p className="text-muted-soft mb-0">All products are well stocked.</p>
+              <div className="p-3 bg-light rounded-3 text-center text-muted small">
+                ✓ All products in your inventory have healthy stock levels.
+              </div>
             ) : (
-              data.lowStock.map((p) => (
-                <div key={p._id} className="d-flex justify-content-between border-top py-2">
-                  <Link to={`/dashboard/admin/product/${p.slug}`}>{p.name}</Link>
-                  <span className="text-danger fw-semibold">{p.quantity} left</span>
-                </div>
-              ))
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light small">
+                    <tr>
+                      <th>Product Name</th>
+                      <th>Current Units</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.lowStock.map((p) => (
+                      <tr key={p._id}>
+                        <td>
+                          <Link to={`/dashboard/admin/product/${p.slug}`} className="fw-semibold text-dark text-decoration-none">
+                            {p.name}
+                          </Link>
+                        </td>
+                        <td>
+                          <span className="badge bg-danger-subtle text-danger fw-bold px-2 py-1">
+                            {p.quantity} units left
+                          </span>
+                        </td>
+                        <td>
+                          <Link to={`/dashboard/admin/product/${p.slug}`} className="btn btn-outline-custom btn-sm py-1 px-2">
+                            Restock
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </>

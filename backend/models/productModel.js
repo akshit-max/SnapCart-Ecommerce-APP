@@ -30,6 +30,14 @@ const productSchema = new mongoose.Schema(
       min: 0,
     },
     photo: {
+      url: {
+        type: String,
+        default: "",
+      },
+      public_id: {
+        type: String,
+        default: "",
+      },
       data: Buffer,
       contentType: String,
     },

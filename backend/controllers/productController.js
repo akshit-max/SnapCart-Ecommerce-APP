@@ -3,8 +3,13 @@ import categoryModel from "../models/categoryModel.js";
 import fs from "fs";
 import slugify from "slugify";
 import { getCache, setCache, clearCachePattern } from "../helpers/cacheHelper.js";
+import {
+  isCloudinaryConfigured,
+  uploadImageToCloudinary,
+  deleteImageFromCloudinary,
+} from "../helpers/cloudinaryHelper.js";
 
-const MAX_PHOTO_SIZE = 1024 * 1024; // 1mb
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5mb max size with modern CDN upload
 
 // shared checks for create and update, returns an error message or null
 const validateProduct = ({ name, description, price, category, quantity }, photo) => {
@@ -13,7 +18,7 @@ const validateProduct = ({ name, description, price, category, quantity }, photo
   if (!price || Number(price) <= 0) return "Price must be greater than 0";
   if (!category) return "Category is required";
   if (quantity === undefined || quantity === "" || Number(quantity) < 0) return "Quantity is required";
-  if (photo && photo.size > MAX_PHOTO_SIZE) return "Photo should be less than 1mb";
+  if (photo && photo.size > MAX_PHOTO_SIZE) return "Photo should be less than 5mb";
   if (photo && !photo.type?.startsWith("image/")) return "Only image files are allowed";
   return null;
 };
@@ -41,8 +46,14 @@ export const createProductController = async (req, res) => {
     }
 
     if (photo) {
-      product.photo.data = fs.readFileSync(photo.path);
-      product.photo.contentType = photo.type;
+      if (isCloudinaryConfigured()) {
+        const { url, public_id } = await uploadImageToCloudinary(photo.path);
+        product.photo.url = url;
+        product.photo.public_id = public_id;
+      } else {
+        product.photo.data = fs.readFileSync(photo.path);
+        product.photo.contentType = photo.type;
+      }
     }
     await product.save();
     await clearCachePattern("product");
@@ -71,8 +82,19 @@ export const updateProductController = async (req, res) => {
 
     product.set(fields);
     if (photo) {
-      product.photo.data = fs.readFileSync(photo.path);
-      product.photo.contentType = photo.type;
+      if (isCloudinaryConfigured()) {
+        if (product.photo?.public_id) {
+          await deleteImageFromCloudinary(product.photo.public_id);
+        }
+        const { url, public_id } = await uploadImageToCloudinary(photo.path);
+        product.photo.url = url;
+        product.photo.public_id = public_id;
+        product.photo.data = undefined;
+        product.photo.contentType = undefined;
+      } else {
+        product.photo.data = fs.readFileSync(photo.path);
+        product.photo.contentType = photo.type;
+      }
     }
     await product.save();
 
@@ -86,6 +108,10 @@ export const updateProductController = async (req, res) => {
 //delete product
 export const deleteProductController = async (req, res) => {
   try {
+    const product = await productModel.findById(req.params.pid);
+    if (product?.photo?.public_id) {
+      await deleteImageFromCloudinary(product.photo.public_id);
+    }
     await productModel.findByIdAndDelete(req.params.pid);
     await clearCachePattern("product");
     res.status(200).send({ success: true, message: "Product deleted successfully" });
@@ -101,7 +127,7 @@ export const getProductController = async (req, res) => {
     const products = await productModel
       .find({})
       .populate("category", "name")
-      .select("-photo")
+      .select("-photo.data")
       .sort({ createdAt: -1 });
     res.status(200).send({ success: true, products });
   } catch (error) {
@@ -115,7 +141,7 @@ export const getSingleProductController = async (req, res) => {
   try {
     const product = await productModel
       .findOne({ slug: req.params.slug })
-      .select("-photo")
+      .select("-photo.data")
       .populate("category");
     if (!product) return res.status(404).send({ success: false, message: "Product not found" });
     res.status(200).send({ success: true, product });
@@ -129,7 +155,15 @@ export const getSingleProductController = async (req, res) => {
 export const productPhotoController = async (req, res) => {
   try {
     const product = await productModel.findById(req.params.pid).select("photo");
-    if (!product?.photo?.data) return res.status(404).send({ success: false, message: "No photo" });
+    if (!product) return res.status(404).send({ success: false, message: "Product not found" });
+
+    // If hosted on Cloudinary CDN, redirect browser directly to edge CDN URL
+    if (product.photo?.url) {
+      return res.redirect(302, product.photo.url);
+    }
+
+    // Resilient fallback for legacy buffer-stored images
+    if (!product.photo?.data) return res.status(404).send({ success: false, message: "No photo" });
 
     res.set("Content-Type", product.photo.contentType);
     res.set("Cache-Control", "public, max-age=86400");
@@ -169,7 +203,7 @@ export const productListController = async (req, res) => {
     const [products, total] = await Promise.all([
       productModel
         .find(filter)
-        .select("-photo")
+        .select("-photo.data")
         .sort(SORT_OPTIONS[sort] || SORT_OPTIONS.newest)
         .skip((page - 1) * perPage)
         .limit(perPage),
@@ -198,7 +232,7 @@ export const searchProductController = async (req, res) => {
     try {
       products = await productModel
         .find({ $text: { $search: raw } })
-        .select("-photo")
+        .select("-photo.data")
         .limit(30);
     } catch {
       // index missing in test env or special characters: fall through to regex
@@ -214,7 +248,7 @@ export const searchProductController = async (req, res) => {
             { description: { $regex: keyword, $options: "i" } },
           ],
         })
-        .select("-photo")
+        .select("-photo.data")
         .limit(30);
     }
 
@@ -231,7 +265,7 @@ export const relatedProductController = async (req, res) => {
     const { pid, cid } = req.params;
     const products = await productModel
       .find({ category: cid, _id: { $ne: pid } })
-      .select("-photo")
+      .select("-photo.data")
       .limit(4);
     res.status(200).send({ success: true, products });
   } catch (error) {
@@ -246,7 +280,7 @@ export const productCategoryController = async (req, res) => {
     const category = await categoryModel.findOne({ slug: req.params.slug });
     if (!category) return res.status(404).send({ success: false, message: "Category not found" });
 
-    const products = await productModel.find({ category: category._id }).select("-photo");
+    const products = await productModel.find({ category: category._id }).select("-photo.data");
     res.status(200).send({ success: true, category, products });
   } catch (error) {
     console.log(error);

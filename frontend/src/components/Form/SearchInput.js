@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiSearch } from "react-icons/fi";
 
 const SearchInput = () => {
   const [keyword, setKeyword] = useState("");
@@ -8,23 +9,20 @@ const SearchInput = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!keyword.trim()) return;
-    // keyword goes in the url so results survive a refresh and can be shared
     navigate(`/search?q=${encodeURIComponent(keyword.trim())}`);
   };
 
   return (
-    <form className="d-flex search-form" role="search" onSubmit={handleSubmit}>
+    <form className="search-input-wrap" role="search" onSubmit={handleSubmit}>
+      <FiSearch className="search-icon" />
       <input
-        className="form-control me-2"
+        className="form-control"
         type="search"
-        placeholder="Search products"
+        placeholder="Search electronics, sneakers, apparel..."
         aria-label="Search"
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
       />
-      <button className="btn btn-outline-primary" type="submit">
-        Search
-      </button>
     </form>
   );
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaImage } from "react-icons/fa";
+import { FiUploadCloud, FiImage, FiCheck, FiDollarSign, FiBox } from "react-icons/fi";
 import useCategory from "../../hooks/useCategory";
 import { photoUrl } from "../../utils/helpers";
 
@@ -37,59 +37,146 @@ const ProductForm = ({ initialValues = emptyProduct, productId, submitLabel, onS
 
   return (
     <form onSubmit={handleSubmit}>
-      <label className="form-label small">Category</label>
-      <select name="category" value={values.category} onChange={handleChange} className="form-select mb-3" required>
-        <option value="">Select category</option>
-        {categories.map((c) => (
-          <option key={c._id} value={c._id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      {/* Category Selection */}
+      <div className="mb-3">
+        <label className="form-label small">Target Category</label>
+        <select
+          name="category"
+          value={values.category}
+          onChange={handleChange}
+          className="form-select"
+          required
+        >
+          <option value="">Select a product category...</option>
+          {categories.map((c) => (
+            <option key={c._id} value={c._id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <label className="btn btn-outline-secondary w-100 mb-3">
-        <FaImage className="me-2" />
-        {photo ? photo.name : "Upload photo (max 1mb)"}
-        <input type="file" accept="image/*" hidden onChange={(e) => setPhoto(e.target.files[0])} />
-      </label>
+      {/* Image Upload Dropzone */}
+      <div className="mb-3">
+        <label className="form-label small">Product High-Resolution Photo</label>
+        <label
+          className="d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded-3 w-100 cursor-pointer"
+          style={{
+            cursor: "pointer",
+            background: "#f8fafc",
+            borderColor: "#cbd5e1",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <FiUploadCloud size={32} className="text-primary mb-2" />
+          <div className="fw-semibold text-dark small">
+            {photo ? photo.name : "Click to select or drop product image (Max 1MB)"}
+          </div>
+          <span className="small text-muted" style={{ fontSize: "11px" }}>
+            JPEG, PNG, or WebP. Automatically optimized & hosted on Cloudinary CDN.
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => setPhoto(e.target.files[0])}
+          />
+        </label>
+      </div>
 
+      {/* Preview Box */}
       {preview && (
-        <img src={preview} alt="preview" className="w-100 mb-3 rounded" style={{ height: 220, objectFit: "contain" }} />
+        <div className="mb-3 p-2 bg-light border rounded-3 text-center">
+          <div className="small text-muted mb-2 d-flex align-items-center justify-content-center gap-1">
+            <FiImage size={13} /> Active Image Preview:
+          </div>
+          <img
+            src={preview}
+            alt="Preview"
+            className="rounded border"
+            style={{ maxHeight: 220, maxWidth: "100%", objectFit: "contain" }}
+          />
+        </div>
       )}
 
-      <label className="form-label small">Name</label>
-      <input name="name" value={values.name} onChange={handleChange} className="form-control mb-3" required />
+      {/* Name Input */}
+      <div className="mb-3">
+        <label className="form-label small">Product Title</label>
+        <input
+          name="name"
+          value={values.name}
+          onChange={handleChange}
+          className="form-control"
+          placeholder="e.g. Italian Wool Tailored Blazer (Charcoal)"
+          required
+        />
+      </div>
 
-      <label className="form-label small">Description</label>
-      <textarea name="description" value={values.description} onChange={handleChange}
-        className="form-control mb-3" rows={3} required />
+      {/* Description */}
+      <div className="mb-3">
+        <label className="form-label small">Product Story & Specifications</label>
+        <textarea
+          name="description"
+          value={values.description}
+          onChange={handleChange}
+          className="form-control"
+          rows={4}
+          placeholder="Detailed product highlights, material composition, sizing instructions..."
+          required
+        />
+      </div>
 
-      <div className="row">
-        <div className="col-6">
-          <label className="form-label small">Price (₹)</label>
-          <input type="number" name="price" min="0.01" step="0.01" value={values.price}
-            onChange={handleChange} className="form-control mb-3" required />
+      {/* Pricing and Stock */}
+      <div className="row g-3 mb-3">
+        <div className="col-sm-6">
+          <label className="form-label small d-flex align-items-center gap-1">
+            <FiDollarSign size={13} className="text-muted" /> Retail Price (₹ INR)
+          </label>
+          <input
+            type="number"
+            name="price"
+            min="1"
+            step="0.01"
+            value={values.price}
+            onChange={handleChange}
+            className="form-control"
+            placeholder="2999"
+            required
+          />
         </div>
-        <div className="col-6">
-          <label className="form-label small">Stock</label>
-          <input type="number" name="quantity" min="0" value={values.quantity}
-            onChange={handleChange} className="form-control mb-3" required />
+        <div className="col-sm-6">
+          <label className="form-label small d-flex align-items-center gap-1">
+            <FiBox size={13} className="text-muted" /> Initial Stock Units
+          </label>
+          <input
+            type="number"
+            name="quantity"
+            min="0"
+            value={values.quantity}
+            onChange={handleChange}
+            className="form-control"
+            placeholder="50"
+            required
+          />
         </div>
       </div>
 
-      <div className="form-check mb-4">
+      {/* Shipping Checkbox */}
+      <div className="form-check p-3 bg-light rounded-3 border mb-4">
         <input
           type="checkbox"
           id="shipping"
-          className="form-check-input"
+          className="form-check-input ms-0 me-2"
           checked={values.shipping}
           onChange={(e) => setValues({ ...values, shipping: e.target.checked })}
         />
-        <label htmlFor="shipping" className="form-check-label">Free shipping</label>
+        <label htmlFor="shipping" className="form-check-label fw-semibold text-dark small cursor-pointer">
+          Include Complimentary Express Shipping for this product
+        </label>
       </div>
 
       <button type="submit" className="btn btn-brand w-100 py-2" disabled={saving}>
-        {saving ? "Saving..." : submitLabel}
+        {saving ? "Saving to Catalog..." : <><FiCheck className="me-1" /> {submitLabel}</>}
       </button>
     </form>
   );
