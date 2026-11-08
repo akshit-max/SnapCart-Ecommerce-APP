@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#brandGrad)" />
+
+  <!-- Bag Handle -->
+  <path d="M48 50 V34 C48 24.5 54.5 18 64 18 C73.5 18 80 24.5 80 34 V50" 
+        fill="none" 
+        stroke="#ffffff" 
+        stroke-width="7" 
+        stroke-linecap="round" />
+
+  <!-- Bag Body -->
+  <rect x="34" y="46" width="60" height="54" rx="10" fill="#ffffff" filter="url(#shadow)" />
+
+  <!-- Bag Accent Notch -->
+  <path d="M54 54 C56 59 72 59 74 54" 
+        fill="none" 
+        stroke="#e2e8f0" 
+        stroke-width="3.5" 
+        stroke-linecap="round" />
+
+  <!-- Luxury Gold Sparkle -->
+  <path d="M96 26 L99 34 L107 37 L99 40 L96 48 L93 40 L85 37 L93 34 Z" fill="#fbbf24" />
+</svg>
+

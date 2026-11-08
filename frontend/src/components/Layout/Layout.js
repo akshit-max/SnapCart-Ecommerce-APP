@@ -4,7 +4,7 @@ import Footer from "./Footer";
 
 const Layout = ({ children, title }) => {
   useEffect(() => {
-    document.title = title ? `${title} | SnapCart` : "SnapCart - Shop Online";
+    document.title = title ? `${title} | SnapCart` : "SnapCart — Luxury Curated Marketplace";
   }, [title]);
 
   return (
