@@ -14,21 +14,20 @@ The application is built to withstand high-concurrency race conditions, third-pa
 ## Table of Contents
 
 - [Overview](#overview)
-- [Key Features](#key-features)
-- [Screenshots & UI Walkthrough](#screenshots--ui-walkthrough)
-- [Tech Stack](#tech-stack)
 - [System Architecture](#system-architecture)
-- [Database Design & Indexing Strategy](#database-design--indexing-strategy)
-- [Engineering Decisions & Trade-offs](#engineering-decisions--trade-offs)
+- [Core Engineering Decisions & Trade-offs](#core-engineering-decisions--trade-offs)
 - [Performance & Benchmarks](#performance--benchmarks)
-- [Frontend Engineering & Luxury UX Polish](#frontend-engineering--luxury-ux-polish)
+- [Database Design & Indexing Strategy](#database-design--indexing-strategy)
 - [Checkout & Payment Workflow](#checkout--payment-workflow)
+- [Key Features](#key-features)
+- [Frontend Engineering & Luxury UX Polish](#frontend-engineering--luxury-ux-polish)
+- [Key User Journeys & Visual Experience](#key-user-journeys--visual-experience)
+- [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Installation & Getting Started](#installation--getting-started)
 - [Environment Variables](#environment-variables)
 - [Testing & Quality Assurance](#testing--quality-assurance)
-- [Docker Deployment](#docker-deployment)
-- [Production Build](#production-build)
+- [Docker Deployment & Production Build](#docker-deployment--production-build)
 - [API Reference](#api-reference)
 - [Security Considerations](#security-considerations)
 - [Known Limitations](#known-limitations)
@@ -48,78 +47,6 @@ In production e-commerce architectures, critical systemic failures typically ste
 5. **Database Asset Bloat**: Storing binary images directly as MongoDB BSON buffers, saturating WiredTiger RAM caches and degrading query throughput.
 
 SnapCart resolves these challenges within a maintainable Modular Monolith using database-level atomic operations, circuit breaker fault-tolerance, Cloudinary CDN offloading, Redis cache-aside with in-memory fallbacks, and server-to-server webhook reconciliation.
-
----
-
-## Key Features
-
-### Customer Experience & Storefront
-- **10 Curated Luxury Departments**: Discover apparel, luxury timepieces, footwear, designer sunglasses, fine fragrances, travel luggage, and consumer electronics.
-- **Dynamic Multi-Parameter Discovery**: Real-time filtering by category multi-select, interactive price range sliders, arrival date sorting, and server-side pagination (6 items per page).
-- **Full-Text Tokenized Search**: MongoDB text indexes with automated regex fallback for partial-word matching and input character escaping.
-- **Cart & Promotional Engine**: Persistent client-side cart state with quantity adjustments and coupon engine supporting discount vouchers (`SNAPCART20` for 20% off, `WELCOME10` for 10% off).
-- **Flexible Checkout Modes**: Dual checkout workflows—online payments via Razorpay (UPI, Credit/Debit Cards, Netbanking) and Cash on Delivery (COD).
-- **Self-Service Cancellation & Automated Refunds**: Track order states (`Not Processed` &rarr; `Processing` &rarr; `Shipped` &rarr; `Delivered`). Customers can cancel unfulfilled orders, immediately restoring inventory and triggering automated Razorpay refunds.
-- **Profile & Security Governance**: Customer address management and security-question-based password reset with salted hashes.
-
-### Administrative Governance
-- **Executive Metrics Dashboard**: Real-time overview of gross revenue, aggregate orders, catalog count, customer directory, and automated low-stock warnings ($\le 5$ units).
-- **Product Lifecycle Management**: Complete CRUD interface supporting multipart Cloudinary image uploads, instant image previews, and category associations.
-- **Category Governance**: Department creation and slug generation, with safety locks blocking deletion of categories containing active products.
-- **Order Fulfillment Controls**: State progression controls (`Processing`, `Shipped`, `Delivered`, `Cancelled`) with automated inventory restocking and payment refunds on administrative cancellation.
-
-### Reliability & System Design
-- **Atomic Stock Reservation**: Single-query conditional decrements (`$gte`) eliminating overselling under concurrent checkout spikes.
-- **Opossum Payment Circuit Breaker**: Wraps payment gateway calls with a 5-second timeout, 50% error threshold, and 10-second recovery cooldown, gracefully failing over to Cash on Delivery.
-- **Automated Inventory Sweeper**: Background sweeper runs every 10 minutes to release stranded stock from abandoned checkouts ($>15$ minutes) without deleting financial audit logs.
-- **Resilient Redis Cache-Aside**: Read-heavy catalog queries are cached in Redis for 300 seconds with write-through invalidation on mutations and a zero-crash in-memory fallback.
-- **Raw-Byte Webhook Reconciliation**: Asynchronous server-to-server Razorpay webhooks validate HMAC-SHA256 signatures against raw request buffers using timing-safe comparisons.
-
----
-
-## Screenshots & UI Walkthrough
-
-> *Note: Place application screenshots in `docs/screenshots/` prior to public presentation.*
-
-| View | Description | Screenshot Location |
-| :--- | :--- | :--- |
-| **Luxury Storefront & Hero Carousel** | Interactive carousel, category visual row, promotional deal ribbon, and curated product grid. | `docs/screenshots/storefront.png` |
-| **Product Details & Sticky Bag** | Dynamic customer ratings, MRP discount tags, delivery estimation, and single-toast cart additions. | `docs/screenshots/product-details.png` |
-| **In-App ConfirmModal** | Glassmorphic confirmation modal replacing native browser popups for cancellations and deletions. | `docs/screenshots/confirm-modal.png` |
-| **Cart & Promo Coupon Engine** | Real-time price breakdown, voucher application (`SNAPCART20`), and dual checkout modal. | `docs/screenshots/cart-checkout.png` |
-| **Admin Executive Dashboard** | Real-time revenue metrics, inventory health, low-stock warnings, and order status fulfillment. | `docs/screenshots/admin-dashboard.png` |
-
----
-
-## Tech Stack
-
-| Domain | Technology | Exact Version | Purpose & Architectural Justification |
-| :--- | :--- | :--- | :--- |
-| **Frontend** | React | `^18.2.0` | Component-based Single Page Application with Concurrent Mode features |
-| | React Router DOM | `^7.7.0` | Client-side routing with nested layouts and private route guards |
-| | Context API | Built-in | Global state management for authentication, cart, and search |
-| | Axios | `^1.10.0` | HTTP client with automatic JWT authorization header injection |
-| | Bootstrap & Ant Design | `^5.3` / `^6.3` | Responsive layout grid, form controls, and UI primitives |
-| | React Hot Toast | `^2.5.2` | Single-authority glassmorphic notification toasts with deduplication IDs |
-| | React Icons | `^5.5.0` | Lightweight Feather and FontAwesome icon set |
-| **Backend** | Node.js | `>=20.x` | High-throughput asynchronous runtime (ES Modules) |
-| | Express | `^5.1.0` | RESTful API server framework with native async error handling |
-| | Mongoose | `^8.16.4` | MongoDB Object Data Modeling with compound, text, and status indexes |
-| | Opossum | `^10.0.0` | Circuit Breaker pattern preventing cascade failure on payment gateway delays |
-| | JSON Web Tokens | `^9.0.2` | Stateless authentication tokens with 7-day expiration |
-| | bcrypt | `^6.0.0` | Salted hashing for passwords and security recovery answers (10 rounds) |
-| | express-rate-limit | `^8.7.1` | Ingress brute-force protection (20 requests per 15-minute window) |
-| | helmet | `^8.3.0` | HTTP security headers and protocol hardening |
-| | Nodemailer | `^7.0.5` | SMTP transport for customer contact inquiries with HTML sanitization |
-| **Database** | MongoDB Atlas / Local | `7.x` | Primary document database supporting atomic document write locks |
-| **Media & CDN** | Cloudinary SDK | `^2.11.0` | Cloud object storage, automatic WebP/AVIF format optimization, and edge CDN delivery |
-| **Caching** | Redis / ioredis | `^6.0.0` | Cache-aside catalog storage with 300s TTL and in-memory Map fallback |
-| **Payments** | Razorpay Node SDK | `^2.9.8` | Order generation, HMAC validation, and automated refunds |
-| **Testing** | Node.js Test Runner | `node:test` | Zero-dependency native test runner executing 30 automated assertions |
-| | Supertest | `^7.3.1` | End-to-end HTTP endpoint and status code verification |
-| | mongodb-memory-server | `^11.3.0` | Ephemeral in-memory MongoDB database isolation for deterministic tests |
-| **DevOps** | Docker & Compose | Multi-stage | Containerized multi-service deployment (Express, Nginx, MongoDB, Redis) |
-| | GitHub Actions | CI Workflow | Automated test execution and production build verification on push |
 
 ---
 
@@ -169,97 +96,7 @@ flowchart TD
 
 ---
 
-## Database Design & Indexing Strategy
-
-The data layer uses MongoDB managed through Mongoose ODM (`backend/models/`). Collections are structured into normalized documents for customers, departments, and catalog items, paired with embedded financial snapshots for orders.
-
-```mermaid
-erDiagram
-    USER ||--o{ ORDER : "places (has many)"
-    CATEGORY ||--o{ PRODUCT : "classifies (has many)"
-    ORDER ||--|{ ORDER_ITEM : "contains (embedded snapshot)"
-    PRODUCT ||--o{ ORDER_ITEM : "referenced in"
-
-    USER {
-        ObjectId _id PK "Unique customer identifier"
-        string name "Full customer name"
-        string email UK "Indexed unique login credential"
-        string password "Salted bcrypt hash (10 rounds)"
-        string phone "Contact phone number"
-        string address "Default delivery destination"
-        string answer "Hashed security recovery answer"
-        int role "0: Customer, 1: Administrator"
-        datetime createdAt "Account registration timestamp"
-        datetime updatedAt "Last modification timestamp"
-    }
-
-    CATEGORY {
-        ObjectId _id PK "Unique department identifier"
-        string name "Department title"
-        string slug UK "Indexed unique URL slug"
-        datetime createdAt "Category creation timestamp"
-        datetime updatedAt "Last modification timestamp"
-    }
-
-    PRODUCT {
-        ObjectId _id PK "Unique product identifier"
-        ObjectId category FK "Compound indexed category reference"
-        string name "Text indexed product name"
-        string slug "URL slug"
-        string description "Text indexed product details"
-        number price "Compound indexed unit price"
-        int quantity "Available inventory stock (gte 0)"
-        string photo_url "Cloudinary CDN edge delivery URL"
-        string photo_public_id "Cloudinary cloud asset identifier"
-        buffer photo_data "Legacy MongoDB binary BSON buffer"
-        string photo_contentType "MIME image content-type"
-        boolean shipping "Free delivery eligibility"
-        datetime createdAt "B-Tree indexed arrival timestamp"
-        datetime updatedAt "Last modification timestamp"
-    }
-
-    ORDER {
-        ObjectId _id PK "Unique order identifier"
-        ObjectId buyer FK "Compound indexed customer reference"
-        number total "Server calculated immutable total"
-        string address "Snapshot delivery destination"
-        string status "Not Processed to Delivered"
-        string payment_method "Razorpay or COD"
-        string payment_status "Indexed: Paid, Pending, Refunded, Expired"
-        string payment_razorpayOrderId "Gateway order transaction ID"
-        string payment_razorpayPaymentId "Gateway payment verification ID"
-        datetime cancellingAt "Atomic concurrency lock timestamp (60s)"
-        boolean stockRestored "Idempotency seal (prevents double refund)"
-        datetime createdAt "Compound indexed order creation timestamp"
-        datetime updatedAt "Last modification timestamp"
-    }
-
-    ORDER_ITEM {
-        ObjectId product FK "Product catalog reference"
-        string name "Immutable historical product title"
-        number price "Immutable historical unit price"
-        int qty "Reserved inventory units"
-    }
-```
-
-### Performance Indexes
-
-| Collection | Index Definition | Index Type | Purpose & Query Optimization |
-| :--- | :--- | :--- | :--- |
-| `products` | `{ category: 1, price: 1 }` | Compound Index | Accelerates multi-department filtering combined with price-ascending or price-descending sorting. |
-| `products` | `{ createdAt: -1 }` | B-Tree Index | Powers instantaneous catalog discovery for the "Newest Arrivals" default sort. |
-| `products` | `{ name: "text", description: "text" }` | Text Index | Enables tokenized full-text search across product titles and detailed descriptions. |
-| `orders` | `{ buyer: 1, createdAt: -1 }` | Compound Index | Optimizes customer dashboard order history queries, scoping lookups to authenticated user IDs. |
-| `orders` | `{ "payment.status": 1, createdAt: 1 }` | Compound Index | Powers the 10-minute abandoned cart sweeper range scan without scanning completed orders. |
-| `categories` | `{ slug: 1 }` | Unique Index | Enforces unique URL slugs and guarantees $O(1)$ category lookup. |
-| `users` | `{ email: 1 }` | Unique Index | Guarantees account uniqueness and accelerates login credential lookups. |
-
-### Immutability & Financial Audit Trails
-When an order is created, SnapCart copies the product's `name` and `price` directly into the order's embedded `items` array. Even if an administrator later updates a product's price or permanently deletes the product from the catalog, historical customer orders, receipts, and revenue audit calculations remain completely unchanged.
-
----
-
-## Engineering Decisions & Trade-offs
+## Core Engineering Decisions & Trade-offs
 
 ### 1. Concurrency-Safe Atomic Stock Reservation
 * **Decision**: Stock is reserved before initiating payment using a single atomic conditional query:
@@ -321,29 +158,91 @@ The following measurements reflect actual system performance under local and net
 
 ---
 
-## Frontend Engineering & Luxury UX Polish
+## Database Design & Indexing Strategy
 
-### 1. Zero Native Browser Popups (`ConfirmModal`)
-All native browser dialogs (`window.confirm`, `window.alert`) have been replaced with a luxury, in-app glassmorphic [`ConfirmModal`](frontend/src/components/ConfirmModal.js) component:
-- **Aesthetics**: Dark glassmorphic backdrop overlay (`rgba(15, 23, 42, 0.65)` with `backdrop-filter: blur(6px)`) and smooth CSS entrance animations (`fadeIn` and `scaleIn`).
-- **Accessibility & UX**: Automatically binds an <kbd>Esc</kbd> key listener, enables background click-away, and locks `document.body` scroll while open.
-- **Wired Actions**: Integrated across customer order cancellation, admin order cancellation, category deletion, and product deletion.
+The data layer uses MongoDB managed through Mongoose ODM (`backend/models/`). Collections are structured into normalized documents for customers, departments, and catalog items, paired with embedded financial snapshots for orders.
 
-### 2. Single-Authority Toast Engine
-- Cart additions are routed through a single authority: [`addToCart(product, count, showToast)`](frontend/src/context/cart.js).
-- Prevents double-firing toasts by applying unique notification deduplication keys (`id: cart-${product._id}`) and stock keys (`id: stock-${product._id}`).
-- Styled via dark glassmorphism (`rgba(15, 23, 42, 0.95)` with backdrop blur, rounded pill geometry, and distinct status iconography).
+```mermaid
+erDiagram
+    USER ||--o{ ORDER : "places (has many)"
+    CATEGORY ||--o{ PRODUCT : "classifies (has many)"
+    ORDER ||--|{ ORDER_ITEM : "contains (embedded snapshot)"
+    PRODUCT ||--o{ ORDER_ITEM : "referenced in"
 
-### 3. Promotional Voucher Engine
-- Supports dynamic client-side coupon application:
-  - `SNAPCART20` &rarr; 20% discount on order total.
-  - `WELCOME10` &rarr; 10% discount on order total.
-- Instantly updates cart pricing totals, item savings, and checkout payloads.
+    USER {
+        ObjectId _id PK "Unique customer identifier"
+        string name "Full customer name"
+        string email UK "Indexed unique login credential"
+        string password "Salted bcrypt hash (10 rounds)"
+        string phone "Contact phone number"
+        string address "Default delivery destination"
+        string answer "Hashed security recovery answer"
+        int role "0: Customer, 1: Administrator"
+        datetime createdAt "Account registration timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
 
-### 4. Bespoke Retina Branding Suite
-- **Vector SVG Favicon** ([`frontend/public/favicon.svg`](frontend/public/favicon.svg)): Crisp Retina vector graphic with indigo-to-purple gradient, shopping bag silhouette, and amber gold star accent.
-- **Multi-Resolution ICO** ([`frontend/public/favicon.ico`](frontend/public/favicon.ico)): Multi-size bitmap embedding 16×16, 32×32, 48×48, and 64×64 icons.
-- **PWA Assets** ([`logo192.png`](frontend/public/logo192.png) & [`logo512.png`](frontend/public/logo512.png)): Generated with 4× supersampled antialiasing.
+    CATEGORY {
+        ObjectId _id PK "Unique department identifier"
+        string name UK "Unique department title"
+        string slug "URL slug"
+    }
+
+    PRODUCT {
+        ObjectId _id PK "Unique product identifier"
+        ObjectId category FK "Compound indexed category reference"
+        string name "Text indexed product name"
+        string slug "URL slug"
+        string description "Text indexed product details"
+        number price "Compound indexed unit price"
+        int quantity "Available inventory stock (gte 0)"
+        string photo_url "Cloudinary CDN edge delivery URL"
+        string photo_public_id "Cloudinary cloud asset identifier"
+        buffer photo_data "Legacy MongoDB binary BSON buffer"
+        string photo_contentType "MIME image content-type"
+        boolean shipping "Free delivery eligibility"
+        datetime createdAt "B-Tree indexed arrival timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
+
+    ORDER {
+        ObjectId _id PK "Unique order identifier"
+        ObjectId buyer FK "Compound indexed customer reference"
+        number total "Server calculated immutable total"
+        string address "Snapshot delivery destination"
+        string status "Not Processed to Delivered"
+        string payment_method "Razorpay or COD"
+        string payment_status "Indexed: Paid, Pending, Refunded, Expired"
+        string payment_razorpayOrderId "Gateway order transaction ID"
+        string payment_razorpayPaymentId "Gateway payment verification ID"
+        datetime cancellingAt "Atomic concurrency lock timestamp (60s)"
+        boolean stockRestored "Idempotency seal (prevents double refund)"
+        datetime createdAt "Compound indexed order creation timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
+
+    ORDER_ITEM {
+        ObjectId product FK "Product catalog reference"
+        string name "Immutable historical product title"
+        number price "Immutable historical unit price"
+        int qty "Reserved inventory units"
+    }
+```
+
+### Performance Indexes
+
+| Collection | Index Definition | Index Type | Purpose & Query Optimization |
+| :--- | :--- | :--- | :--- |
+| `products` | `{ category: 1, price: 1 }` | Compound Index | Accelerates multi-department filtering combined with price-ascending or price-descending sorting. |
+| `products` | `{ createdAt: -1 }` | B-Tree Index | Powers instantaneous catalog discovery for the "Newest Arrivals" default sort. |
+| `products` | `{ name: "text", description: "text" }` | Text Index | Enables tokenized full-text search across product titles and detailed descriptions. |
+| `orders` | `{ buyer: 1, createdAt: -1 }` | Compound Index | Optimizes customer dashboard order history queries, scoping lookups to authenticated user IDs. |
+| `orders` | `{ "payment.status": 1, createdAt: 1 }` | Compound Index | Powers the 10-minute abandoned cart sweeper range scan without scanning completed orders. |
+| `categories` | `{ name: 1 }` | Unique Index | Enforces unique department titles and prevents duplicate category registrations. |
+| `users` | `{ email: 1 }` | Unique Index | Guarantees account uniqueness and accelerates login credential lookups. |
+
+### Immutability & Financial Audit Trails
+When an order is created, SnapCart copies the product's `name` and `price` directly into the order's embedded `items` array. Even if an administrator later updates a product's price or permanently deletes the product from the catalog, historical customer orders, receipts, and revenue audit calculations remain completely unchanged.
 
 ---
 
@@ -392,6 +291,103 @@ sequenceDiagram
 
 ---
 
+## Key Features
+
+### Customer Experience & Storefront
+- **10 Curated Luxury Departments**: Discover apparel, luxury timepieces, footwear, designer sunglasses, fine fragrances, travel luggage, and consumer electronics.
+- **Dynamic Multi-Parameter Discovery**: Real-time filtering by category multi-select, interactive price range sliders, arrival date sorting, and server-side pagination (6 items per page).
+- **Full-Text Tokenized Search**: MongoDB text indexes with automated regex fallback for partial-word matching and input character escaping.
+- **Cart & Promotional Engine**: Persistent client-side cart state with quantity adjustments and coupon engine supporting discount vouchers (`SNAPCART20` for 20% off, `WELCOME10` for 10% off).
+- **Flexible Checkout Modes**: Dual checkout workflows—online payments via Razorpay (UPI, Credit/Debit Cards, Netbanking) and Cash on Delivery (COD).
+- **Self-Service Cancellation & Automated Refunds**: Track order states (`Not Processed` &rarr; `Processing` &rarr; `Shipped` &rarr; `Delivered`). Customers can cancel unfulfilled orders, immediately restoring inventory and triggering automated Razorpay refunds.
+- **Profile & Security Governance**: Customer address management and security-question-based password reset with salted hashes.
+
+### Administrative Governance
+- **Executive Metrics Dashboard**: Real-time overview of gross revenue, aggregate orders, catalog count, customer directory, and automated low-stock warnings ($\le 5$ units).
+- **Product Lifecycle Management**: Complete CRUD interface supporting multipart Cloudinary image uploads, instant image previews, and category associations.
+- **Category Governance**: Department creation and slug generation, with safety locks blocking deletion of categories containing active products.
+- **Order Fulfillment Controls**: State progression controls (`Processing`, `Shipped`, `Delivered`, `Cancelled`) with automated inventory restocking and payment refunds on administrative cancellation.
+
+### Reliability & System Design
+- **Atomic Stock Reservation**: Single-query conditional decrements (`$gte`) eliminating overselling under concurrent checkout spikes.
+- **Opossum Payment Circuit Breaker**: Wraps payment gateway calls with a 5-second timeout, 50% error threshold, and 10-second recovery cooldown, gracefully failing over to Cash on Delivery.
+- **Automated Inventory Sweeper**: Background sweeper runs every 10 minutes to release stranded stock from abandoned checkouts ($>15$ minutes) without deleting financial audit logs.
+- **Resilient Redis Cache-Aside**: Read-heavy catalog queries are cached in Redis for 300 seconds with write-through invalidation on mutations and a zero-crash in-memory fallback.
+- **Raw-Byte Webhook Reconciliation**: Asynchronous server-to-server Razorpay webhooks validate HMAC-SHA256 signatures against raw request buffers using timing-safe comparisons.
+
+---
+
+## Frontend Engineering & Luxury UX Polish
+
+### 1. Zero Native Browser Popups (`ConfirmModal`)
+All native browser dialogs (`window.confirm`, `window.alert`) have been replaced with a luxury, in-app glassmorphic [`ConfirmModal`](frontend/src/components/ConfirmModal.js) component:
+- **Aesthetics**: Dark glassmorphic backdrop overlay (`rgba(15, 23, 42, 0.65)` with `backdrop-filter: blur(6px)`) and smooth CSS entrance animations (`fadeIn` and `scaleIn`).
+- **Accessibility & UX**: Automatically binds an <kbd>Esc</kbd> key listener, enables background click-away, and locks `document.body` scroll while open.
+- **Wired Actions**: Integrated across customer order cancellation, admin order cancellation, category deletion, and product deletion.
+
+### 2. Single-Authority Toast Engine
+- Cart additions are routed through a single authority: [`addToCart(product, count, showToast)`](frontend/src/context/cart.js).
+- Prevents double-firing toasts by applying unique notification deduplication keys (`id: cart-${product._id}`) and stock keys (`id: stock-${product._id}`).
+- Styled via dark glassmorphism (`rgba(15, 23, 42, 0.95)` with backdrop blur, rounded pill geometry, and distinct status iconography).
+
+### 3. Promotional Voucher Engine
+- Supports dynamic client-side coupon application:
+  - `SNAPCART20` &rarr; 20% discount on order total.
+  - `WELCOME10` &rarr; 10% discount on order total.
+- Instantly updates cart pricing totals, item savings, and checkout payloads.
+
+### 4. Bespoke Retina Branding Suite
+- **Vector SVG Favicon** ([`frontend/public/favicon.svg`](frontend/public/favicon.svg)): Crisp Retina vector graphic with indigo-to-purple gradient, shopping bag silhouette, and amber gold star accent.
+- **Multi-Resolution ICO** ([`frontend/public/favicon.ico`](frontend/public/favicon.ico)): Multi-size bitmap embedding 16×16, 32×32, 48×48, and 64×64 icons.
+- **PWA Assets** ([`logo192.png`](frontend/public/logo192.png) & [`logo512.png`](frontend/public/logo512.png)): Generated with 4× supersampled antialiasing.
+
+---
+
+## Key User Journeys & Visual Experience
+
+| Storefront Experience | Primary Route | Key User Journey & Implementation Highlights |
+| :--- | :--- | :--- |
+| **Curated Luxury Storefront** | `/` | Interactive `HeroBanner` carousel, `CategoryVisualRow` with 10 luxury departments, top deal ribbon, and 6-item server-side pagination. |
+| **Product Details & Sticky Bag** | `/product/:slug` | Real-time stock status, dynamic star ratings, MRP discount tags, delivery estimator, and single-authority bag addition. |
+| **Cart & Promo Voucher Engine** | `/cart` | Real-time subtotal calculation, instant discount voucher engine (`SNAPCART20`, `WELCOME10`), and Razorpay modal / COD checkout. |
+| **In-App Confirmation Modal** | Global | Custom glassmorphic `ConfirmModal` replacing native browser popups on customer and admin cancellations / deletions. |
+| **Customer Order Tracking** | `/dashboard/user/orders` | Real-time fulfillment chips (`Not Processed` &rarr; `Delivered`), order tracking, and self-service cancellation with automated refund. |
+| **Executive Admin Console** | `/dashboard/admin` | Gross revenue analytics, order volume counter, automated low-stock warnings ($\le 5$ units), and fulfillment transition controls. |
+
+---
+
+## Tech Stack
+
+| Domain | Technology | Exact Version | Purpose & Architectural Justification |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | React | `^18.2.0` | Component-based Single Page Application with Concurrent Mode features |
+| | React Router DOM | `^7.7.0` | Client-side routing with nested layouts and private route guards |
+| | Context API | Built-in | Global state management for authentication, cart, and search |
+| | Axios | `^1.10.0` | HTTP client with automatic JWT authorization header injection |
+| | Bootstrap & Ant Design | `5.3` (CDN) / `^6.3.5` (npm) | Responsive layout grid, form controls, and UI primitives |
+| | React Hot Toast | `^2.5.2` | Single-authority glassmorphic notification toasts with deduplication IDs |
+| | React Icons | `^5.5.0` | Lightweight Feather and FontAwesome icon set |
+| **Backend** | Node.js | `>=20.x` | High-throughput asynchronous runtime (ES Modules) |
+| | Express | `^5.1.0` | RESTful API server framework with native async error handling |
+| | Mongoose | `^8.16.4` | MongoDB Object Data Modeling with compound, text, and status indexes |
+| | Opossum | `^10.0.0` | Circuit Breaker pattern preventing cascade failure on payment gateway delays |
+| | JSON Web Tokens | `^9.0.2` | Stateless authentication tokens with 7-day expiration |
+| | bcrypt | `^6.0.0` | Salted hashing for passwords and security recovery answers (10 rounds) |
+| | express-rate-limit | `^8.7.1` | Ingress brute-force protection (20 requests per 15-minute window) |
+| | helmet | `^8.3.0` | HTTP security headers and protocol hardening |
+| | Nodemailer | `^7.0.5` | SMTP transport for customer contact inquiries with HTML sanitization |
+| **Database** | MongoDB Atlas / Local | `7.x` | Primary document database supporting atomic document write locks |
+| **Media & CDN** | Cloudinary SDK | `^2.11.0` | Cloud object storage, automatic WebP/AVIF format optimization, and edge CDN delivery |
+| **Caching** | Redis / ioredis | `^6.0.0` | Cache-aside catalog storage with 300s TTL and in-memory Map fallback |
+| **Payments** | Razorpay Node SDK | `^2.9.8` | Order generation, HMAC validation, and automated refunds |
+| **Testing** | Node.js Test Runner | `node:test` | Zero-dependency native test runner executing 30 automated assertions |
+| | Supertest | `^7.3.1` | End-to-end HTTP endpoint and status code verification |
+| | mongodb-memory-server | `^11.3.0` | Ephemeral in-memory MongoDB database isolation for deterministic tests |
+| **DevOps** | Docker & Compose | Multi-stage | Containerized multi-service deployment (Express, Nginx, MongoDB, Redis) |
+| | GitHub Actions | CI Workflow | Automated test execution and production build verification on push |
+
+---
+
 ## Project Structure
 
 ```
@@ -412,7 +408,7 @@ SnapCart/
 │   ├── middlewares/
 │   │   └── authMiddleware.js           # requireSignIn (JWT) & isAdmin authorization
 │   ├── models/
-│   │   ├── categoryModel.js            # Category schema with unique slug index
+│   │   ├── categoryModel.js            # Category schema with unique name index
 │   │   ├── orderModel.js               # Order schema with concurrency & status indexes
 │   │   ├── productModel.js             # Product schema with CDN URLs & compound indexes
 │   │   └── userModel.js                # User schema with hashed credentials
@@ -424,7 +420,9 @@ SnapCart/
 │   │   └── productRoutes.js            # Catalog discovery & product CRUD endpoints
 │   ├── scripts/
 │   │   ├── expandCatalog.js            # Catalog expansion seed script (Cloudinary + MongoDB)
-│   │   └── migrateImagesToCloudinary.js # Database migration: MongoDB buffers to Cloudinary CDN
+│   │   ├── migrateImagesToCloudinary.js # Database migration: MongoDB buffers to Cloudinary CDN
+│   │   ├── replaceOldProducts.js       # Replaces legacy catalog images with studio photos
+│   │   └── seedCatalog.js              # Base catalog seed script with Cloudinary upload
 │   ├── tests/
 │   │   ├── auth.test.js                # Auth API test suite (6 tests)
 │   │   ├── category.test.js            # Category API test suite (3 tests)
@@ -625,24 +623,22 @@ npm test --prefix backend
 
 ---
 
-## Docker Deployment
+## Docker Deployment & Production Build
 
+### Docker Compose Local Orchestration
 SnapCart provides multi-stage Docker configurations orchestrated via Docker Compose:
 
 ```bash
 docker-compose up --build
 ```
 
-### Service Map:
+#### Service Map:
 - **Backend API**: Port `8080` (Node 20 Alpine container)
 - **Frontend App**: Port `3000` (Nginx Alpine serving optimized production React build)
 - **MongoDB**: Port `27017` (MongoDB 7 Jammy)
 - **Redis Cache**: Port `6379` (Redis 7 Alpine)
 
----
-
-## Production Build
-
+### Production Build & Static Serving
 To compile the optimized client bundle and serve it through Express:
 
 ```bash
@@ -678,6 +674,7 @@ Base URL prefix: `/api/v1`. Protected routes require a valid JWT token in the `A
 | `GET` | `/product/product-photo/:pid` | Public | 302 redirect to Cloudinary CDN or stream legacy buffer |
 | `GET` | `/product/search/:keyword` | Public | Full-text tokenized search with regex fallback |
 | `GET` | `/product/related-product/:pid/:cid` | Public | Fetch related products in the same category |
+| `GET` | `/product/product-category/:slug` | Public | Fetch products by category slug with category details |
 | `POST` | `/product/create-product` | Admin | Create product with image upload (multipart/form-data) |
 | `PUT` | `/product/update-product/:pid` | Admin | Update product details and photo |
 | `DELETE`| `/product/delete-product/:pid` | Admin | Delete product and invalidate catalog cache |
