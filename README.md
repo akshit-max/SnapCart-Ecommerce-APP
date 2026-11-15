@@ -171,7 +171,76 @@ flowchart TD
 
 ## Database Design & Indexing Strategy
 
-The data layer uses MongoDB via Mongoose. Schemas are optimized with targeted indexes to ensure $O(\log N)$ search, filter, and background sweep performance under heavy catalog scale.
+The data layer uses MongoDB managed through Mongoose ODM (`backend/models/`). Collections are structured into normalized documents for customers, departments, and catalog items, paired with embedded financial snapshots for orders.
+
+```mermaid
+erDiagram
+    USER ||--o{ ORDER : "places (has many)"
+    CATEGORY ||--o{ PRODUCT : "classifies (has many)"
+    ORDER ||--|{ ORDER_ITEM : "contains (embedded snapshot)"
+    PRODUCT ||--o{ ORDER_ITEM : "referenced in"
+
+    USER {
+        ObjectId _id PK "Unique customer identifier"
+        string name "Full customer name"
+        string email UK "Indexed unique login credential"
+        string password "Salted bcrypt hash (10 rounds)"
+        string phone "Contact phone number"
+        string address "Default delivery destination"
+        string answer "Hashed security recovery answer"
+        int role "0: Customer, 1: Administrator"
+        datetime createdAt "Account registration timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
+
+    CATEGORY {
+        ObjectId _id PK "Unique department identifier"
+        string name "Department title"
+        string slug UK "Indexed unique URL slug"
+        datetime createdAt "Category creation timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
+
+    PRODUCT {
+        ObjectId _id PK "Unique product identifier"
+        ObjectId category FK "Compound indexed category reference"
+        string name "Text indexed product name"
+        string slug "URL slug"
+        string description "Text indexed product details"
+        number price "Compound indexed unit price"
+        int quantity "Available inventory stock (gte 0)"
+        string photo_url "Cloudinary CDN edge delivery URL"
+        string photo_public_id "Cloudinary cloud asset identifier"
+        buffer photo_data "Legacy MongoDB binary BSON buffer"
+        string photo_contentType "MIME image content-type"
+        boolean shipping "Free delivery eligibility"
+        datetime createdAt "B-Tree indexed arrival timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
+
+    ORDER {
+        ObjectId _id PK "Unique order identifier"
+        ObjectId buyer FK "Compound indexed customer reference"
+        number total "Server calculated immutable total"
+        string address "Snapshot delivery destination"
+        string status "Not Processed to Delivered"
+        string payment_method "Razorpay or COD"
+        string payment_status "Indexed: Paid, Pending, Refunded, Expired"
+        string payment_razorpayOrderId "Gateway order transaction ID"
+        string payment_razorpayPaymentId "Gateway payment verification ID"
+        datetime cancellingAt "Atomic concurrency lock timestamp (60s)"
+        boolean stockRestored "Idempotency seal (prevents double refund)"
+        datetime createdAt "Compound indexed order creation timestamp"
+        datetime updatedAt "Last modification timestamp"
+    }
+
+    ORDER_ITEM {
+        ObjectId product FK "Product catalog reference"
+        string name "Immutable historical product title"
+        number price "Immutable historical unit price"
+        int qty "Reserved inventory units"
+    }
+```
 
 ### Performance Indexes
 
