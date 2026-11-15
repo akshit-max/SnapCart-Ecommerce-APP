@@ -11,6 +11,19 @@ The application is built to withstand high-concurrency race conditions, third-pa
 
 ---
 
+## Live Demo & Visual Preview
+
+- **Live Application Deployment**: [https://snapcart-production.up.railway.app](https://snapcart-production.up.railway.app) *(Replace with your active deployment link)*
+- **API Health Endpoint**: [https://snapcart-production.up.railway.app/api/v1/health](https://snapcart-production.up.railway.app/api/v1/health)
+
+| 🛍️ Curated Storefront & Departments | 🛒 Cart, Promo Engine & Checkout | 📊 Executive Admin Management |
+| :---: | :---: | :---: |
+| ![Storefront Preview](docs/screenshots/storefront.png)<br/>*Hero carousel, 10 luxury departments & dynamic price filtering* | ![Cart & Checkout Preview](docs/screenshots/cart-checkout.png)<br/>*Real-time voucher discounts (`SNAPCART20`) & dual payment options* | ![Admin Dashboard Preview](docs/screenshots/admin-dashboard.png)<br/>*Real-time revenue metrics, low-stock warnings & order fulfillment* |
+
+> *Tip for Reviewers: Add repository screenshots into `docs/screenshots/` to display previews above.*
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -19,19 +32,16 @@ The application is built to withstand high-concurrency race conditions, third-pa
 - [Performance & Benchmarks](#performance--benchmarks)
 - [Database Design & Indexing Strategy](#database-design--indexing-strategy)
 - [Checkout & Payment Workflow](#checkout--payment-workflow)
-- [Key Features](#key-features)
-- [Frontend Engineering & Luxury UX Polish](#frontend-engineering--luxury-ux-polish)
+- [Testing & Quality Assurance](#testing--quality-assurance)
+- [Key Features & Frontend Engineering Highlights](#key-features--frontend-engineering-highlights)
 - [Key User Journeys & Visual Experience](#key-user-journeys--visual-experience)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Installation & Getting Started](#installation--getting-started)
 - [Environment Variables](#environment-variables)
-- [Testing & Quality Assurance](#testing--quality-assurance)
 - [Docker Deployment & Production Build](#docker-deployment--production-build)
 - [API Reference](#api-reference)
-- [Security Considerations](#security-considerations)
-- [Known Limitations](#known-limitations)
-- [Future Improvements](#future-improvements)
+- [Security Considerations, Known Limitations & Future Improvements](#security-considerations-known-limitations--future-improvements)
 - [Author & License](#author--license)
 
 ---
@@ -255,6 +265,7 @@ sequenceDiagram
     participant API as SnapCart API
     participant DB as MongoDB Atlas
     participant PGW as Razorpay Gateway
+    participant Sweeper as 10-Min Sweeper
 
     Customer->>API: POST /api/v1/order/razorpay/create { cart: [{ _id, qty }] }
     API->>API: Consolidate duplicate cart entries
@@ -286,60 +297,94 @@ sequenceDiagram
             API->>DB: Idempotently mark order as "Paid"
             API-->>PGW: 200 OK
         end
+
+        opt Checkout Abandoned (>15 Minutes)
+            Sweeper->>DB: Scan orders (payment.status: "Pending", createdAt > 15m)
+            Sweeper->>DB: Atomic restore reserved inventory ($inc: +qty)
+            Sweeper->>DB: Mark order "Cancelled", payment "Expired"
+        end
     end
 ```
 
 ---
 
-## Key Features
+## Testing & Quality Assurance
 
-### Customer Experience & Storefront
+SnapCart maintains a comprehensive automated test suite executed via Node's native test runner (`node:test`) against an ephemeral in-memory MongoDB database (`mongodb-memory-server`). Tests execute deterministically with zero network dependencies.
+
+```bash
+# Run the automated backend test suite
+npm test
+
+# Run tests directly in the backend directory
+npm test --prefix backend
+```
+
+### Verified Test Suite Breakdown (30 Tests across 4 Suites)
+
+```
+▶ Auth API (6 tests)
+  ✔ registers a user without sending back the password
+  ✔ rejects missing fields and duplicate emails
+  ✔ logs in with the right password and returns a token
+  ✔ gives the same error for a wrong password and an unknown email
+  ✔ resets the password with the security answer (case doesn't matter)
+  ✔ protects user and admin routes
+
+▶ Category API (3 tests)
+  ✔ creates a new category and slugifies the name
+  ✔ rejects duplicate category names
+  ✔ blocks deleting a category when products are still assigned to it
+
+▶ Order API (14 tests)
+  ✔ uses the price from the database, not from the client
+  ✔ does not oversell and puts back stock when one item fails
+  ✔ restores stock when the user cancels
+  ✔ accepts a valid razorpay signature and rejects a fake one
+  ✔ lets only admins update order status
+  ✔ cleans up abandoned pending orders and restores reserved stock
+  ✔ processes razorpay webhook event and marks order paid
+  ✔ checks system health status endpoint
+  ✔ checks payment circuit breaker status
+  ✔ prevents double stock restoration when two cancel requests arrive concurrently
+  ✔ consolidates duplicate product entries in the cart into a single stock decrement
+  ✔ handles duplicate webhook delivery idempotently without errors
+  ✔ prevents overselling when two users concurrently purchase the last available item
+  ✔ safely handles duplicate late-payment webhook for expired order without double refund
+
+▶ Product API (7 tests)
+  ✔ filters by price, sorts and paginates the product list
+  ✔ handles regex characters in search safely
+  ✔ only lets admins delete products
+  ✔ returns 404 for a product that doesn't exist
+  ✔ invalidates the catalog cache when an admin deletes a product
+  ✔ redirects to Cloudinary CDN URL when product photo is hosted in cloud storage
+  ✔ serves legacy buffer photo with correct headers if stored directly in database
+
+ℹ tests 30 | suites 4 | pass 30 | fail 0 | cancelled 0
+```
+
+### Test Scope & Limitations
+- **Database Isolation**: Tests execute against ephemeral in-memory databases; database collections are wiped between tests (`clearTestDb`) to prevent test pollution.
+- **External Dependencies**: External third-party calls (Razorpay network APIs, SMTP emails) are validated via cryptographic HMAC assertions and mock state triggers rather than calling live credit card APIs during testing.
+
+---
+
+## Key Features & Frontend Engineering Highlights
+
+### 1. Storefront & Core Commerce Features
 - **10 Curated Luxury Departments**: Discover apparel, luxury timepieces, footwear, designer sunglasses, fine fragrances, travel luggage, and consumer electronics.
 - **Dynamic Multi-Parameter Discovery**: Real-time filtering by category multi-select, interactive price range sliders, arrival date sorting, and server-side pagination (6 items per page).
 - **Full-Text Tokenized Search**: MongoDB text indexes with automated regex fallback for partial-word matching and input character escaping.
 - **Cart & Promotional Engine**: Persistent client-side cart state with quantity adjustments and coupon engine supporting discount vouchers (`SNAPCART20` for 20% off, `WELCOME10` for 10% off).
 - **Flexible Checkout Modes**: Dual checkout workflows—online payments via Razorpay (UPI, Credit/Debit Cards, Netbanking) and Cash on Delivery (COD).
 - **Self-Service Cancellation & Automated Refunds**: Track order states (`Not Processed` &rarr; `Processing` &rarr; `Shipped` &rarr; `Delivered`). Customers can cancel unfulfilled orders, immediately restoring inventory and triggering automated Razorpay refunds.
-- **Profile & Security Governance**: Customer address management and security-question-based password reset with salted hashes.
+- **Administrative Governance**: Real-time overview of gross revenue, aggregate orders, catalog count, customer directory, and automated low-stock warnings ($\le 5$ units).
 
-### Administrative Governance
-- **Executive Metrics Dashboard**: Real-time overview of gross revenue, aggregate orders, catalog count, customer directory, and automated low-stock warnings ($\le 5$ units).
-- **Product Lifecycle Management**: Complete CRUD interface supporting multipart Cloudinary image uploads, instant image previews, and category associations.
-- **Category Governance**: Department creation and slug generation, with safety locks blocking deletion of categories containing active products.
-- **Order Fulfillment Controls**: State progression controls (`Processing`, `Shipped`, `Delivered`, `Cancelled`) with automated inventory restocking and payment refunds on administrative cancellation.
-
-### Reliability & System Design
-- **Atomic Stock Reservation**: Single-query conditional decrements (`$gte`) eliminating overselling under concurrent checkout spikes.
-- **Opossum Payment Circuit Breaker**: Wraps payment gateway calls with a 5-second timeout, 50% error threshold, and 10-second recovery cooldown, gracefully failing over to Cash on Delivery.
-- **Automated Inventory Sweeper**: Background sweeper runs every 10 minutes to release stranded stock from abandoned checkouts ($>15$ minutes) without deleting financial audit logs.
-- **Resilient Redis Cache-Aside**: Read-heavy catalog queries are cached in Redis for 300 seconds with write-through invalidation on mutations and a zero-crash in-memory fallback.
-- **Raw-Byte Webhook Reconciliation**: Asynchronous server-to-server Razorpay webhooks validate HMAC-SHA256 signatures against raw request buffers using timing-safe comparisons.
-
----
-
-## Frontend Engineering & Luxury UX Polish
-
-### 1. Zero Native Browser Popups (`ConfirmModal`)
-All native browser dialogs (`window.confirm`, `window.alert`) have been replaced with a luxury, in-app glassmorphic [`ConfirmModal`](frontend/src/components/ConfirmModal.js) component:
-- **Aesthetics**: Dark glassmorphic backdrop overlay (`rgba(15, 23, 42, 0.65)` with `backdrop-filter: blur(6px)`) and smooth CSS entrance animations (`fadeIn` and `scaleIn`).
-- **Accessibility & UX**: Automatically binds an <kbd>Esc</kbd> key listener, enables background click-away, and locks `document.body` scroll while open.
-- **Wired Actions**: Integrated across customer order cancellation, admin order cancellation, category deletion, and product deletion.
-
-### 2. Single-Authority Toast Engine
-- Cart additions are routed through a single authority: [`addToCart(product, count, showToast)`](frontend/src/context/cart.js).
-- Prevents double-firing toasts by applying unique notification deduplication keys (`id: cart-${product._id}`) and stock keys (`id: stock-${product._id}`).
-- Styled via dark glassmorphism (`rgba(15, 23, 42, 0.95)` with backdrop blur, rounded pill geometry, and distinct status iconography).
-
-### 3. Promotional Voucher Engine
-- Supports dynamic client-side coupon application:
-  - `SNAPCART20` &rarr; 20% discount on order total.
-  - `WELCOME10` &rarr; 10% discount on order total.
-- Instantly updates cart pricing totals, item savings, and checkout payloads.
-
-### 4. Bespoke Retina Branding Suite
-- **Vector SVG Favicon** ([`frontend/public/favicon.svg`](frontend/public/favicon.svg)): Crisp Retina vector graphic with indigo-to-purple gradient, shopping bag silhouette, and amber gold star accent.
-- **Multi-Resolution ICO** ([`frontend/public/favicon.ico`](frontend/public/favicon.ico)): Multi-size bitmap embedding 16×16, 32×32, 48×48, and 64×64 icons.
-- **PWA Assets** ([`logo192.png`](frontend/public/logo192.png) & [`logo512.png`](frontend/public/logo512.png)): Generated with 4× supersampled antialiasing.
+### 2. Frontend Polish & UX Engineering
+- **Zero Native Browser Popups (`ConfirmModal`)**: Replaced all unstyled `window.confirm` and `window.alert` dialogs with a luxury in-app glassmorphic [`ConfirmModal`](frontend/src/components/ConfirmModal.js) component. Built with `backdrop-filter: blur(6px)`, smooth entrance animations (`fadeIn`, `scaleIn`), automatic <kbd>Esc</kbd> key listeners, background click dismissal, and `document.body` scroll lock. Wired into customer cancellations, admin cancellations, category deletions, and product removals.
+- **Single-Authority Toast Engine**: Cart additions are consolidated inside [`addToCart(product, count, showToast)`](frontend/src/context/cart.js). Eliminates duplicate notifications by applying unique deduplication keys (`id: cart-${product._id}`) and stock boundaries (`id: stock-${product._id}`), styled via dark glassmorphism.
+- **Bespoke Retina Branding Suite**: Complete identity design featuring a scalable vector SVG favicon ([`favicon.svg`](frontend/public/favicon.svg)) with squircle gradient, multi-resolution bitmap ([`favicon.ico`](frontend/public/favicon.ico)), and 4× supersampled Retina PWA icons ([`logo192.png`](frontend/public/logo192.png), [`logo512.png`](frontend/public/logo512.png)).
 
 ---
 
@@ -473,7 +518,6 @@ SnapCart/
 git clone https://github.com/akshit-max/SnapCart-Ecommerce-APP.git
 cd SnapCart-Ecommerce-APP
 
-# Install dependencies across all workspaces
 npm install --prefix backend
 npm install --prefix frontend
 npm install
@@ -483,7 +527,7 @@ npm install
 
 #### Option A: Quickstart Zero-Dependency Mode (Simplest Setup)
 Run SnapCart locally with zero third-party cloud accounts. Caching uses the in-memory fallback, images store as database buffers, and payments default to Cash on Delivery:
-1. In `backend/.env`, set only:
+1. In `backend/.env`, configure core environment variables:
    ```ini
    PORT=8080
    NODE_ENV=development
@@ -491,7 +535,7 @@ Run SnapCart locally with zero third-party cloud accounts. Caching uses the in-m
    JWT_SECRET=your_super_secret_jwt_key_min_32_characters
    CLIENT_URL=http://localhost:3000
    ```
-2. Start both services:
+2. Start both services concurrently:
    ```bash
    npm run dev
    ```
@@ -503,9 +547,9 @@ Integrate Razorpay test sandboxes, Cloudinary media CDN, and Redis caching:
    ```bash
    npm run dev
    ```
-   - **Frontend**: http://localhost:3000
-   - **Backend API**: http://localhost:8080
-   - **Health Check**: http://localhost:8080/api/v1/health
+   - **Frontend Client**: `http://localhost:3000`
+   - **Backend API**: `http://localhost:8080`
+   - **Health Check**: `http://localhost:8080/api/v1/health`
 
 #### Option C: Docker Compose Full Stack (One-Command Deployment)
 Run Express, React (Nginx), MongoDB 7, and Redis 7 together in isolated containers:
@@ -558,68 +602,6 @@ Create a `.env` file in the `backend/` directory based on [`backend/.env.example
 | `EMAIL_PASS` | Gmail 16-character App Password for SMTP authentication. | `abcd efgh ijkl mnop` |
 
 > **Security Note**: Never commit actual `.env` files. Both `backend/.env` and `frontend/.env` are explicitly ignored by `.gitignore`.
-
----
-
-## Testing & Quality Assurance
-
-SnapCart maintains a test suite executed via Node's native test runner (`node:test`) against an ephemeral in-memory MongoDB database (`mongodb-memory-server`). Tests execute deterministically with zero network dependencies.
-
-```bash
-# Run the automated backend test suite
-npm test
-
-# Run tests directly in the backend directory
-npm test --prefix backend
-```
-
-### Verified Test Suite Breakdown (30 Tests across 4 Suites)
-
-```
-▶ Auth API (6 tests)
-  ✔ registers a user without sending back the password
-  ✔ rejects missing fields and duplicate emails
-  ✔ logs in with the right password and returns a token
-  ✔ gives the same error for a wrong password and an unknown email
-  ✔ resets the password with the security answer (case doesn't matter)
-  ✔ protects user and admin routes
-
-▶ Category API (3 tests)
-  ✔ creates a new category and slugifies the name
-  ✔ rejects duplicate category names
-  ✔ blocks deleting a category when products are still assigned to it
-
-▶ Order API (14 tests)
-  ✔ uses the price from the database, not from the client
-  ✔ does not oversell and puts back stock when one item fails
-  ✔ restores stock when the user cancels
-  ✔ accepts a valid razorpay signature and rejects a fake one
-  ✔ lets only admins update order status
-  ✔ cleans up abandoned pending orders and restores reserved stock
-  ✔ processes razorpay webhook event and marks order paid
-  ✔ checks system health status endpoint
-  ✔ checks payment circuit breaker status
-  ✔ prevents double stock restoration when two cancel requests arrive concurrently
-  ✔ consolidates duplicate product entries in the cart into a single stock decrement
-  ✔ handles duplicate webhook delivery idempotently without errors
-  ✔ prevents overselling when two users concurrently purchase the last available item
-  ✔ safely handles duplicate late-payment webhook for expired order without double refund
-
-▶ Product API (7 tests)
-  ✔ filters by price, sorts and paginates the product list
-  ✔ handles regex characters in search safely
-  ✔ only lets admins delete products
-  ✔ returns 404 for a product that doesn't exist
-  ✔ invalidates the catalog cache when an admin deletes a product
-  ✔ redirects to Cloudinary CDN URL when product photo is hosted in cloud storage
-  ✔ serves legacy buffer photo with correct headers if stored directly in database
-
-ℹ tests 30 | suites 4 | pass 30 | fail 0 | cancelled 0
-```
-
-### Test Scope & Limitations
-- **Database Isolation**: Tests execute against ephemeral in-memory databases; database collections are wiped between tests (`clearTestDb`) to prevent test pollution.
-- **External Dependencies**: External third-party calls (Razorpay network APIs, SMTP emails) are validated via cryptographic HMAC assertions and mock state triggers rather than calling live credit card APIs during testing.
 
 ---
 
@@ -703,7 +685,7 @@ Base URL prefix: `/api/v1`. Protected routes require a valid JWT token in the `A
 | `PUT` | `/order/status/:orderId` | Admin | Transition order status (`Shipped`, `Delivered`, etc.) |
 | `GET` | `/order/stats` | Admin | Revenue, counts, and low-stock product metrics |
 
-### System & Health
+### System & Communication
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/health` | Public | Uptime, timestamp, and MongoDB connectivity status |
@@ -711,8 +693,9 @@ Base URL prefix: `/api/v1`. Protected routes require a valid JWT token in the `A
 
 ---
 
-## Security Considerations
+## Security Considerations, Known Limitations & Future Improvements
 
+### Security Considerations
 - **Credential Salting & Hashing**: Passwords and security recovery answers are hashed using `bcrypt` (10 salt rounds). Hashed fields are stripped from all API outputs via projection and the `publicUser` sanitizer.
 - **Timing-Safe Cryptography**: Signatures for payment verification and webhooks are compared using `crypto.timingSafeEqual` after validating input lengths, preventing timing side-channel attacks.
 - **Input Sanitization**: User input destined for MongoDB regex queries is sanitized via character escaping. Contact form inputs are HTML-escaped before insertion into email templates.
@@ -720,18 +703,12 @@ Base URL prefix: `/api/v1`. Protected routes require a valid JWT token in the `A
 - **HTTP Hardening**: `helmet` applies security headers. CORS is restricted to `CLIENT_URL` in production environments.
 - **Stateless Authorization**: JWT authentication eliminates server-side session stores, validated on both client routes and server endpoints.
 
----
-
-## Known Limitations
-
+### Known Limitations
 - **Single-Node In-Process Sweeper**: The 10-minute abandoned cart sweeper uses an in-process Node.js interval (`setInterval`). In horizontally scaled multi-instance cluster deployments, a distributed queue or scheduler (e.g., BullMQ with Redis) would coordinate execution to prevent duplicate sweep runs across instances.
 - **Local Webhook Tunneling**: Razorpay server-to-server webhook delivery requires a publicly accessible HTTPS URL or tunnel (e.g., ngrok or Localtunnel) when testing live webhook events during local development.
 - **In-Memory Cache Volatility**: When running in zero-dependency mode without Redis, the in-memory cache resets on server process restart.
 
----
-
-## Future Improvements
-
+### Future Improvements
 - [x] **Cloudinary CDN Media Delivery**: Offloaded binary assets to cloud object storage with auto-WebP/AVIF compression.
 - [x] **Promotional Discount Engine**: Promo coupons (`SNAPCART20`, `WELCOME10`) with automatic price deductions.
 - [x] **In-App Glassmorphic Modals**: Fully eliminated native browser popups with reusable `ConfirmModal`.
