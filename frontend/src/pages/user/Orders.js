@@ -17,9 +17,10 @@ const Orders = () => {
   const getOrders = async () => {
     try {
       const { data } = await axios.get("/api/v1/order/my-orders");
-      setOrders(data.orders);
+      setOrders(Array.isArray(data?.orders) ? data.orders : []);
     } catch (error) {
       toast.error(getErrorMessage(error));
+      setOrders([]);
     }
     setLoading(false);
   };
@@ -44,7 +45,7 @@ const Orders = () => {
     <DashboardLayout title="My Orders & Tracking - SnapCart">
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-3 border-bottom">
         <div>
-          <h4 className="fw-bold text-dark mb-1">My Orders & Purchases ({orders.length})</h4>
+          <h4 className="fw-bold text-dark mb-1">My Orders & Purchases ({orders?.length || 0})</h4>
           <p className="text-muted small mb-0">Track real-time shipment status, view invoices, and manage returns.</p>
         </div>
         <Link to="/" className="btn btn-outline-custom btn-sm">
@@ -58,7 +59,7 @@ const Orders = () => {
         </div>
       )}
 
-      {!loading && orders.length === 0 && (
+      {!loading && (orders?.length || 0) === 0 && (
         <div className="card-box empty-state p-5">
           <div className="auth-icon-wrap mb-3" style={{ background: "#f1f5f9", color: "#64748b" }}>
             <FiPackage />

@@ -17,8 +17,8 @@ const CategoryProduct = () => {
     axios
       .get(`/api/v1/product/product-category/${slug}`)
       .then(({ data }) => {
-        setProducts(data.products);
-        setCategory(data.category);
+        setProducts(Array.isArray(data?.products) ? data.products : []);
+        setCategory(data?.category || null);
       })
       .catch(() => {
         setProducts([]);

@@ -19,6 +19,9 @@ const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState(loadAuth);
 
   //default axios
+  if (process.env.REACT_APP_API) {
+    axios.defaults.baseURL = process.env.REACT_APP_API;
+  }
   axios.defaults.headers.common["Authorization"] = auth?.token;
 
   useEffect(() => {

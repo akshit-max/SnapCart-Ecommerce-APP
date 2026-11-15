@@ -48,10 +48,13 @@ const HomePage = () => {
 
         const { data } = await axios.get("/api/v1/product/product-list", { params });
         if (ignore) return;
-        setProducts((prev) => (page === 1 ? data.products : [...prev, ...data.products]));
-        setTotal(data.total);
+        const newProducts = Array.isArray(data?.products) ? data.products : [];
+        setProducts((prev) => (page === 1 ? newProducts : [...(prev || []), ...newProducts]));
+        setTotal(Number(data?.total) || 0);
       } catch (error) {
+        if (ignore) return;
         toast.error("Could not load products");
+        if (page === 1) setProducts([]);
       }
       setLoading(false);
     };
@@ -96,7 +99,7 @@ const HomePage = () => {
   };
 
   // Find active category names for chip tags
-  const activeCategoryNames = categories
+  const activeCategoryNames = (Array.isArray(categories) ? categories : [])
     .filter((c) => checked.includes(c._id))
     .map((c) => ({ id: c._id, name: c.name }));
 
@@ -272,7 +275,7 @@ const HomePage = () => {
             </div>
 
             {/* Empty State */}
-            {!loading && products.length === 0 && (
+            {!loading && (products?.length || 0) === 0 && (
               <div className="card-box text-center py-5">
                 <div className="fs-1 mb-2">🔍</div>
                 <h5 className="fw-bold text-dark">No Products Matched Your Selection</h5>
@@ -287,7 +290,7 @@ const HomePage = () => {
 
             {/* Product Cards Grid */}
             <div className="row g-4">
-              {products.map((p) => (
+              {(products || []).map((p) => (
                 <div className="col-sm-6 col-xl-4" key={p._id}>
                   <ProductCard product={p} />
                 </div>
@@ -297,13 +300,13 @@ const HomePage = () => {
             {loading && <Spinner />}
 
             {/* Load More Pagination */}
-            {!loading && products.length < total && (
+            {!loading && (products?.length || 0) < total && (
               <div className="text-center mt-5">
                 <button
                   className="btn btn-outline-custom px-4 py-2 shadow-sm fw-bold"
                   onClick={() => setPage(page + 1)}
                 >
-                  Load More Products ({products.length} of {total})
+                  Load More Products ({products?.length || 0} of {total})
                 </button>
               </div>
             )}

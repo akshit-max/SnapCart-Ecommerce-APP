@@ -8,7 +8,10 @@ export const formatDate = (date) =>
 export const getErrorMessage = (error) =>
   error.response?.data?.message || "Something went wrong";
 
-export const photoUrl = (id) => `/api/v1/product/product-photo/${id}`;
+export const photoUrl = (id) => {
+  const base = process.env.REACT_APP_API || "";
+  return `${base}/api/v1/product/product-photo/${id}`;
+};
 
 // adds razorpay's checkout script to the page (only once, only when needed)
 export const loadRazorpay = () =>

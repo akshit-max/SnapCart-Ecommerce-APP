@@ -15,12 +15,12 @@ const Products = () => {
   useEffect(() => {
     axios
       .get("/api/v1/product/get-product")
-      .then(({ data }) => setProducts(data.products))
+      .then(({ data }) => setProducts(Array.isArray(data?.products) ? data.products : []))
       .catch(() => toast.error("Could not load products"))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = products.filter(
+  const filtered = (products || []).filter(
     (p) =>
       p.name?.toLowerCase().includes(search.toLowerCase()) ||
       p.category?.name?.toLowerCase().includes(search.toLowerCase())
@@ -30,7 +30,7 @@ const Products = () => {
     <DashboardLayout title="Product Inventory - SnapCart" admin>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">Product Inventory ({products.length})</h4>
+          <h4 className="fw-bold text-dark mb-1">Product Inventory ({products?.length || 0})</h4>
           <p className="text-muted small mb-0">Manage all items, pricing, stock levels, and store visibility.</p>
         </div>
         <Link to="/dashboard/admin/create-product" className="btn btn-brand btn-sm">

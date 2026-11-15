@@ -20,9 +20,10 @@ const CreateCategory = () => {
   const getAllCategory = async () => {
     try {
       const { data } = await axios.get("/api/v1/category/get-category");
-      setCategories(data.category);
+      setCategories(Array.isArray(data?.category) ? data.category : []);
     } catch (error) {
       toast.error("Error fetching categories");
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,7 @@ const CreateCategory = () => {
     <DashboardLayout title="Categories - SnapCart" admin>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">Category Master ({categories.length})</h4>
+          <h4 className="fw-bold text-dark mb-1">Category Master ({categories?.length || 0})</h4>
           <p className="text-muted small mb-0">Create, rename, or retire product collections and departments.</p>
         </div>
         <div className="p-2 rounded-3 bg-primary-subtle text-primary">

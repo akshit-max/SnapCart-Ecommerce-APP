@@ -19,8 +19,11 @@ const AdminOrders = () => {
   useEffect(() => {
     axios
       .get("/api/v1/order/all-orders")
-      .then(({ data }) => setOrders(data.orders))
-      .catch((error) => toast.error(getErrorMessage(error)))
+      .then(({ data }) => setOrders(Array.isArray(data?.orders) ? data.orders : []))
+      .catch((error) => {
+        toast.error(getErrorMessage(error));
+        setOrders([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -53,16 +56,16 @@ const AdminOrders = () => {
     }
   };
 
-  const visibleOrders = filter === "All" ? orders : orders.filter((o) => o.status === filter);
+  const visibleOrders = filter === "All" ? (orders || []) : (orders || []).filter((o) => o.status === filter);
 
-  const pendingCount = orders.filter((o) => o.status === "Not Processed" || o.status === "Processing").length;
-  const deliveredCount = orders.filter((o) => o.status === "Delivered").length;
+  const pendingCount = (orders || []).filter((o) => o.status === "Not Processed" || o.status === "Processing").length;
+  const deliveredCount = (orders || []).filter((o) => o.status === "Delivered").length;
 
   return (
     <DashboardLayout title="Order Management - SnapCart" admin>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-          <h4 className="fw-bold text-dark mb-1">Customer Orders ({visibleOrders.length})</h4>
+          <h4 className="fw-bold text-dark mb-1">Customer Orders ({visibleOrders?.length || 0})</h4>
           <p className="text-muted small mb-0">Track customer fulfillments, update tracking states, and handle refunds.</p>
         </div>
         <div className="d-flex gap-2">
