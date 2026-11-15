@@ -40,8 +40,8 @@ const CartProvider = ({ children }) => {
     if (inCart) {
       setCart(cart.map((item) => (item._id === product._id ? { ...item, qty: item.qty + count } : item)));
     } else {
-      const { _id, name, slug, price, quantity } = product;
-      setCart([...cart, { _id, name, slug, price, stock: quantity, qty: count }]);
+      const { _id, name, slug, price, quantity, photo } = product;
+      setCart([...cart, { _id, name, slug, price, stock: quantity, qty: count, photo }]);
     }
 
     if (showToast) {

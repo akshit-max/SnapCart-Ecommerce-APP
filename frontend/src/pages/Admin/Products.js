@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { FiPlus, FiSearch, FiEdit2, FiExternalLink, FiAlertCircle } from "react-icons/fi";
 import DashboardLayout from "../../components/Layout/DashboardLayout";
 import Spinner from "../../components/Spinner";
-import { formatPrice, photoUrl } from "../../utils/helpers";
+import { formatPrice, photoUrl, FALLBACK_IMAGE } from "../../utils/helpers";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -84,13 +84,17 @@ const Products = () => {
                     <td>
                       <div className="d-flex align-items-center gap-3">
                         <img
-                          src={photoUrl(p._id)}
+                          src={photoUrl(p)}
                           alt={p.name}
                           width={48}
                           height={48}
                           className="rounded-3 border"
                           style={{ objectFit: "cover" }}
                           loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = FALLBACK_IMAGE;
+                          }}
                         />
                         <div>
                           <div className="fw-bold text-dark">{p.name}</div>

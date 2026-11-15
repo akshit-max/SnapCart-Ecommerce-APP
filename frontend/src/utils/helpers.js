@@ -8,7 +8,20 @@ export const formatDate = (date) =>
 export const getErrorMessage = (error) =>
   error.response?.data?.message || "Something went wrong";
 
-export const photoUrl = (id) => {
+export const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80";
+
+export const photoUrl = (item, photo) => {
+  // 1. Direct Cloudinary URL if available on photo object or item
+  if (photo?.url) return photo.url;
+  if (item?.photo?.url) return item.photo.url;
+  if (typeof item === "string" && (item.startsWith("http://") || item.startsWith("https://"))) {
+    return item;
+  }
+  // 2. Fall back to backend 302 endpoint for buffer images
+  const id = typeof item === "object" && item !== null ? item._id : item;
+  if (!id) return FALLBACK_IMAGE;
+
   const base = process.env.REACT_APP_API || "";
   return `${base}/api/v1/product/product-photo/${id}`;
 };

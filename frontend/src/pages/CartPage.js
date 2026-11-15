@@ -19,7 +19,7 @@ import {
 import Layout from "../components/Layout/Layout";
 import { useCart } from "../context/cart";
 import { useAuth } from "../context/auth";
-import { formatPrice, getErrorMessage, loadRazorpay, photoUrl } from "../utils/helpers";
+import { formatPrice, getErrorMessage, loadRazorpay, photoUrl, FALLBACK_IMAGE } from "../utils/helpers";
 
 const PAYMENT_OPTIONS = [
   { 
@@ -194,7 +194,15 @@ const CartPage = () => {
 
               {cart.map((item) => (
                 <div className="cart-item py-3 d-flex flex-wrap align-items-center gap-3 border-bottom" key={item._id}>
-                  <img src={photoUrl(item._id)} alt={item.name} className="cart-item-img" />
+                  <img
+                    src={photoUrl(item)}
+                    alt={item.name}
+                    className="cart-item-img"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = FALLBACK_IMAGE;
+                    }}
+                  />
 
                   <div className="flex-grow-1" style={{ minWidth: 200 }}>
                     <Link to={`/product/${item.slug}`} className="text-dark text-decoration-none">

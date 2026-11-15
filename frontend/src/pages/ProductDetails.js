@@ -20,7 +20,7 @@ import Layout from "../components/Layout/Layout";
 import ProductCard from "../components/ProductCard";
 import Spinner from "../components/Spinner";
 import { useCart } from "../context/cart";
-import { formatPrice, photoUrl } from "../utils/helpers";
+import { formatPrice, photoUrl, FALLBACK_IMAGE } from "../utils/helpers";
 import toast from "react-hot-toast";
 
 const ProductDetails = () => {
@@ -141,9 +141,13 @@ const ProductDetails = () => {
             <div className="col-lg-6">
               <div className="details-img-container position-relative">
                 <img
-                  src={photoUrl(product._id)}
+                  src={photoUrl(product)}
                   className="details-img"
                   alt={product.name}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = FALLBACK_IMAGE;
+                  }}
                 />
                 <span className={`badge-tag-stock ${inStock ? "in-stock" : "out-stock"}`}>
                   {inStock ? `● In Stock (${product.quantity} units)` : "Sold Out"}

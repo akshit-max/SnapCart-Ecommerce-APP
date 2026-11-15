@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiShoppingCart, FiEye, FiStar, FiHeart, FiTruck } from "react-icons/fi";
 import { useCart } from "../context/cart";
-import { formatPrice, photoUrl } from "../utils/helpers";
+import { formatPrice, photoUrl, FALLBACK_IMAGE } from "../utils/helpers";
 import toast from "react-hot-toast";
 
 const ProductCard = ({ product }) => {
@@ -43,7 +43,15 @@ const ProductCard = ({ product }) => {
   return (
     <div className="product-card" onClick={openDetails}>
       <div className="product-card-img">
-        <img src={photoUrl(product._id)} alt={product.name} loading="lazy" />
+        <img
+          src={photoUrl(product)}
+          alt={product.name}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = FALLBACK_IMAGE;
+          }}
+        />
 
         {/* Floating Wishlist Button */}
         <button

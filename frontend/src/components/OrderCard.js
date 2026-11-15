@@ -1,5 +1,5 @@
 import { FiCalendar, FiPackage, FiCreditCard, FiUser, FiMapPin } from "react-icons/fi";
-import { formatDate, formatPrice, photoUrl } from "../utils/helpers";
+import { formatDate, formatPrice, photoUrl, FALLBACK_IMAGE } from "../utils/helpers";
 
 // Used on both the user's orders page and the admin orders page.
 // children = actions shown in card footer (cancel button, status dropdown)
@@ -52,7 +52,14 @@ const OrderCard = ({ order, showBuyer = false, children }) => {
       <div className="mb-2">
         {order.items.map((item) => (
           <div className="order-item" key={item._id}>
-            <img src={photoUrl(item.product)} alt={item.name} />
+            <img
+              src={photoUrl(item.product)}
+              alt={item.name}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = FALLBACK_IMAGE;
+              }}
+            />
             <div className="flex-grow-1">
               <div className="fw-bold text-dark mb-1">{item.name}</div>
               <div className="small text-muted">
